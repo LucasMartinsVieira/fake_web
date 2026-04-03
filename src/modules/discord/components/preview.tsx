@@ -46,7 +46,7 @@ export function DiscordPreview() {
                 return (
                   <article
                     key={message.id}
-                    className={`grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition ho"ver:bg-white/5 ${
+                    className={`grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${
                       isGrouped ? "py-[1px]" : "mt-4 pb-0.5 pt-1 first:mt-0"
                     }`}
                   >

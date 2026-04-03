@@ -32,3 +32,32 @@ export interface DiscordModuleState {
   accounts: DiscordAccount[];
   messages: DiscordMessage[];
 }
+
+export interface DiscordWorkspacePatch {
+  serverName?: string;
+  channelName?: string;
+}
+
+export interface DiscordAccountDraft {
+  username: string;
+  avatarBase64?: string | null;
+  roleColor?: string;
+}
+
+export interface DiscordMessageDraft {
+  type?: DiscordMessageType;
+  authorId?: string | null;
+  content: string;
+  timestamp?: string;
+  manualTimestamp?: boolean;
+  attachments?: DiscordAttachment[];
+}
+
+export interface DiscordMessagePatch {
+  type?: DiscordMessageType;
+  authorId?: string | null;
+  content?: string;
+  timestamp?: string;
+  manualTimestamp?: boolean;
+  attachments?: DiscordAttachment[];
+}
