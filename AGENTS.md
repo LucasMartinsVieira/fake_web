@@ -8,7 +8,7 @@
 - Future scope: support additional modules such as X/Twitter and Instagram without coupling them to Discord-specific logic.
 
 ## Product Requirements
-- Use React or Next.js in a client-side-only architecture.
+- Use React with Vite in a client-side-only architecture.
 - Use Tailwind CSS for styling.
 - Use `lucide-react` for icons.
 - Use React Context or Redux for state management.
@@ -77,7 +77,7 @@ src/
 ```
 
 ## Action Plan
-1. Bootstrap the app shell with React or Next.js, Tailwind, and `lucide-react`, then create the shared split-pane layout and module switcher.
+1. Bootstrap the app shell with React, Vite, Tailwind, and `lucide-react`, then create the shared split-pane layout and module switcher.
 2. Define the core data model for modules, accounts, messages, attachments, timestamps, and global UI state before building screens.
 3. Implement shared state management and persistence primitives:
    - global store/context
