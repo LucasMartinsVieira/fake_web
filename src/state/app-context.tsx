@@ -13,13 +13,11 @@ import { loadStoredAppState, storeAppState } from "@/state/storage";
 
 interface AppContextValue extends AppState {
   setActiveModule: (moduleId: ModuleId) => void;
-  setScreenshotMode: (value: boolean) => void;
   setCanvasScale: (value: number) => void;
 }
 
 const initialState: AppState = {
   activeModule: "discord",
-  screenshotMode: false,
   canvasScale: 1,
   discordState: initialDiscordState,
 };
@@ -47,8 +45,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ...state,
     setActiveModule: (activeModule) =>
       setState((current) => ({ ...current, activeModule })),
-    setScreenshotMode: (screenshotMode) =>
-      setState((current) => ({ ...current, screenshotMode })),
     setCanvasScale: (canvasScale) =>
       setState((current) => ({ ...current, canvasScale })),
   };

@@ -23,7 +23,6 @@
   - editor controls for accounts, messages, settings
   - live preview for the rendered mockup
 - Provide global tools:
-  - Screenshot Mode that hides editor chrome for clean capture
   - Page-style zoom control that behaves like browser zoom and scales the full mockup proportionally, including text, spacing, avatars, and media
 
 ## Discord Module Requirements
@@ -57,7 +56,6 @@
 
 ## Architecture Guardrails
 - Keep Discord-specific code under `/modules/discord`.
-- Keep global UI state, especially Screenshot Mode, outside any single module so future modules can reuse it.
 - Treat zoom as true proportional canvas scaling of the rendered mockup, not as a layout-only resize that leaves text or message internals visually unchanged.
 - Define a shared app shell that can host multiple modules without redesigning the state model later.
 - Separate domain models from presentational components where possible.
@@ -86,7 +84,6 @@ src/
    - LocalStorage auto-save and hydration
    - JSON export/import pipeline
 4. Build global tools first:
-   - Screenshot Mode
    - page-style zoom that scales the entire preview like a browser viewport
    - reusable file-to-Base64 utility
 5. Build the Discord domain layer under `/modules/discord`:
@@ -104,7 +101,7 @@ src/
    - system messages
    - markdown emphasis
    - image/GIF attachment rendering
-8. Wire editor actions to live preview updates and verify Screenshot Mode removes all editing chrome cleanly.
+8. Wire editor actions to live preview updates and verify the zoom and preview layout remain faithful during editing.
 9. Add import/export validation and resilience for malformed or partial JSON payloads.
 10. Finalize with visual polish, responsive behavior, and manual QA against Discord Web references.
 
@@ -120,7 +117,6 @@ src/
 - Zoom behavior will feel wrong if only the container changes size instead of the full rendered interface scaling together.
 - Unstructured state will make JSON portability and future modules harder.
 - Base64-heavy payloads can make LocalStorage large; keep the schema intentional and avoid duplicated image data.
-- Screenshot Mode can become brittle if editor UI is mixed deeply into preview components.
 
 ## Working Assumptions
 - The first deliverable is a local-first frontend app, not a hosted service.

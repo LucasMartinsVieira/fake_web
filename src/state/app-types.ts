@@ -10,7 +10,6 @@ export interface ModuleOption {
 
 export interface GlobalUiState {
   activeModule: ModuleId;
-  screenshotMode: boolean;
   canvasScale: number;
 }
 
