@@ -11,6 +11,7 @@ import { initialDiscordState } from "@/modules/discord/state/discord-initial-sta
 import {
   createDiscordAccount,
   createDiscordMessage,
+  moveDiscordMessage,
   patchDiscordWorkspace,
   removeDiscordAccount,
   removeDiscordMessage,
@@ -29,11 +30,15 @@ import { loadStoredAppState, storeAppState } from "@/state/storage";
 interface DiscordActionSet {
   updateWorkspace: (patch: DiscordWorkspacePatch) => void;
   addAccount: (draft: DiscordAccountDraft) => void;
-  updateAccount: (accountId: string, patch: Partial<DiscordAccountDraft>) => void;
+  updateAccount: (
+    accountId: string,
+    patch: Partial<DiscordAccountDraft>,
+  ) => void;
   removeAccount: (accountId: string) => void;
   addMessage: (draft: DiscordMessageDraft) => void;
   updateMessage: (messageId: string, patch: DiscordMessagePatch) => void;
   removeMessage: (messageId: string) => void;
+  moveMessage: (messageId: string, direction: "up" | "down") => void;
 }
 
 interface AppContextValue extends AppState {
@@ -44,7 +49,7 @@ interface AppContextValue extends AppState {
 
 const initialState: AppState = {
   activeModule: "discord",
-  canvasScale: 1,
+  canvasScale: 1.6,
   discordState: initialDiscordState,
 };
 
@@ -118,6 +123,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setState((current) => ({
           ...current,
           discordState: removeDiscordMessage(current.discordState, messageId),
+        })),
+      moveMessage: (messageId, direction) =>
+        setState((current) => ({
+          ...current,
+          discordState: moveDiscordMessage(
+            current.discordState,
+            messageId,
+            direction,
+          ),
         })),
     },
   };

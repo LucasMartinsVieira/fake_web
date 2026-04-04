@@ -178,7 +178,7 @@ export function DiscordEditorPanel() {
             <div>
               <h3 className="font-medium text-white">Messages</h3>
               <p className="text-sm text-chrome-300">
-                Compose, reorder timing, and edit the conversation.
+                Compose new messages here. Existing messages are edited from the preview.
               </p>
             </div>
           </div>
@@ -186,37 +186,35 @@ export function DiscordEditorPanel() {
           <div className="space-y-3">
             <div className="rounded-2xl border border-dashed border-white/10 bg-chrome-900/40 p-3">
               <div className="grid gap-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-1 block text-sm text-chrome-300">Type</span>
-                    <select
-                      value={newMessageType}
-                      onChange={(event) =>
-                        setNewMessageType(event.target.value as "user" | "system")
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
-                    >
-                      <option value="user">User message</option>
-                      <option value="system">System message</option>
-                    </select>
-                  </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm text-chrome-300">Type</span>
+                  <select
+                    value={newMessageType}
+                    onChange={(event) =>
+                      setNewMessageType(event.target.value as "user" | "system")
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                  >
+                    <option value="user">User message</option>
+                    <option value="system">System message</option>
+                  </select>
+                </label>
 
-                  <label className="block">
-                    <span className="mb-1 block text-sm text-chrome-300">Author</span>
-                    <select
-                      value={newMessageAuthorId}
-                      onChange={(event) => setNewMessageAuthorId(event.target.value)}
-                      disabled={newMessageType === "system"}
-                      className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
-                    >
-                      {discordState.accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.username}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                <label className="block">
+                  <span className="mb-1 block text-sm text-chrome-300">Author</span>
+                  <select
+                    value={newMessageAuthorId}
+                    onChange={(event) => setNewMessageAuthorId(event.target.value)}
+                    disabled={newMessageType === "system"}
+                    className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
+                  >
+                    {discordState.accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.username}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 <label className="block">
                   <span className="mb-1 block text-sm text-chrome-300">Content</span>
@@ -228,29 +226,27 @@ export function DiscordEditorPanel() {
                   />
                 </label>
 
-                <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
-                  <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-sm text-chrome-300">
-                    <input
-                      type="checkbox"
-                      checked={newMessageManualTimestamp}
-                      onChange={(event) =>
-                        setNewMessageManualTimestamp(event.target.checked)
-                      }
-                    />
-                    Manual timestamp
-                  </label>
+                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-sm text-chrome-300">
+                  <input
+                    type="checkbox"
+                    checked={newMessageManualTimestamp}
+                    onChange={(event) =>
+                      setNewMessageManualTimestamp(event.target.checked)
+                    }
+                  />
+                  Manual timestamp
+                </label>
 
-                  <label className="block">
-                    <span className="mb-1 block text-sm text-chrome-300">Timestamp</span>
-                    <input
-                      type="datetime-local"
-                      value={newMessageTimestamp}
-                      onChange={(event) => setNewMessageTimestamp(event.target.value)}
-                      disabled={!newMessageManualTimestamp}
-                      className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
-                    />
-                  </label>
-                </div>
+                <label className="block">
+                  <span className="mb-1 block text-sm text-chrome-300">Timestamp</span>
+                  <input
+                    type="datetime-local"
+                    value={newMessageTimestamp}
+                    onChange={(event) => setNewMessageTimestamp(event.target.value)}
+                    disabled={!newMessageManualTimestamp}
+                    className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
+                  />
+                </label>
 
                 <button
                   type="button"
@@ -278,97 +274,6 @@ export function DiscordEditorPanel() {
                 </button>
               </div>
             </div>
-
-            {discordState.messages.map((message) => (
-              <div
-                key={message.id}
-                className="rounded-2xl border border-white/10 bg-chrome-900/70 p-3"
-              >
-                <div className="grid gap-3">
-                  <div className="grid gap-3 sm:grid-cols-[132px_minmax(0,1fr)_auto]">
-                    <select
-                      value={message.type}
-                      onChange={(event) =>
-                        discordActions.updateMessage(message.id, {
-                          type: event.target.value as "user" | "system",
-                        })
-                      }
-                      className="rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
-                    >
-                      <option value="user">User</option>
-                      <option value="system">System</option>
-                    </select>
-
-                    <select
-                      value={message.authorId ?? ""}
-                      onChange={(event) =>
-                        discordActions.updateMessage(message.id, {
-                          authorId: event.target.value || null,
-                        })
-                      }
-                      disabled={message.type === "system"}
-                      className="rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
-                    >
-                      {discordState.accounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.username}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => discordActions.removeMessage(message.id)}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-chrome-300 transition hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <textarea
-                    value={message.content}
-                    onChange={(event) =>
-                      discordActions.updateMessage(message.id, {
-                        content: event.target.value,
-                      })
-                    }
-                    rows={3}
-                    className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
-                  />
-
-                  <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
-                    <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-sm text-chrome-300">
-                      <input
-                        type="checkbox"
-                        checked={message.manualTimestamp}
-                        onChange={(event) =>
-                          discordActions.updateMessage(message.id, {
-                            manualTimestamp: event.target.checked,
-                            timestamp: event.target.checked
-                              ? message.timestamp
-                              : undefined,
-                          })
-                        }
-                      />
-                      Manual timestamp
-                    </label>
-
-                    <input
-                      type="datetime-local"
-                      value={toDateTimeLocalValue(message.timestamp)}
-                      onChange={(event) =>
-                        discordActions.updateMessage(message.id, {
-                          manualTimestamp: true,
-                          timestamp: fromDateTimeLocalValue(event.target.value),
-                        })
-                      }
-                      disabled={!message.manualTimestamp}
-                      className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </section>
       </div>

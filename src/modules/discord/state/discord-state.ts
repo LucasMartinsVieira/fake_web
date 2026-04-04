@@ -236,3 +236,33 @@ export function removeDiscordMessage(
     ),
   };
 }
+
+export function moveDiscordMessage(
+  state: DiscordModuleState,
+  messageId: string,
+  direction: "up" | "down",
+) {
+  const currentIndex = state.messages.findIndex(
+    (message) => message.id === messageId,
+  );
+
+  if (currentIndex === -1) {
+    return state;
+  }
+
+  const targetIndex =
+    direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+  if (targetIndex < 0 || targetIndex >= state.messages.length) {
+    return state;
+  }
+
+  const messages = [...state.messages];
+  const [message] = messages.splice(currentIndex, 1);
+  messages.splice(targetIndex, 0, message);
+
+  return {
+    ...state,
+    messages: reflowMessageTimestamps(messages),
+  };
+}

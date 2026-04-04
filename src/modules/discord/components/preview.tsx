@@ -1,15 +1,55 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { ArrowDown, ArrowUp, Pencil, X } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
+import type { DiscordMessage } from "@/modules/discord/state/discord-types";
 import { formatDiscordTimestamp } from "@/modules/discord/utils/format-discord-timestamp";
 
+function toDateTimeLocalValue(timestamp: string) {
+  const date = new Date(timestamp);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocalValue(value: string) {
+  return new Date(value).toISOString();
+}
+
 export function DiscordPreview() {
-  const { canvasScale, discordState } = useAppContext();
+  const { canvasScale, discordState, discordActions } = useAppContext();
   const zoomStyle = { zoom: canvasScale } as CSSProperties;
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingType, setEditingType] = useState<"user" | "system">("user");
+  const [editingAuthorId, setEditingAuthorId] = useState("");
+  const [editingContent, setEditingContent] = useState("");
+  const [editingManualTimestamp, setEditingManualTimestamp] = useState(false);
+  const [editingTimestamp, setEditingTimestamp] = useState(
+    toDateTimeLocalValue(new Date().toISOString()),
+  );
+
+  const editingMessage =
+    discordState.messages.find((message) => message.id === editingMessageId) ?? null;
+
+  useEffect(() => {
+    if (!editingMessage) {
+      return;
+    }
+
+    setEditingType(editingMessage.type);
+    setEditingAuthorId(editingMessage.authorId ?? "");
+    setEditingContent(editingMessage.content);
+    setEditingManualTimestamp(editingMessage.manualTimestamp);
+    setEditingTimestamp(toDateTimeLocalValue(editingMessage.timestamp));
+  }, [editingMessage]);
+
+  function openMessageEditor(message: DiscordMessage) {
+    setEditingMessageId(message.id);
+  }
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-chrome-950/40 p-4">
+    <>
+      <div className="overflow-hidden rounded-[24px] border border-white/10 bg-chrome-950/40 p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">
@@ -42,14 +82,41 @@ export function DiscordPreview() {
                   index > 0 &&
                   discordState.messages[index - 1]?.authorId ===
                     message.authorId;
+                const canMoveUp = index > 0;
+                const canMoveDown = index < discordState.messages.length - 1;
 
                 return (
                   <article
                     key={message.id}
-                    className={`grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${
+                    className={`group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${
                       isGrouped ? "py-[1px]" : "mt-4 pb-0.5 pt-1 first:mt-0"
                     }`}
                   >
+                    <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => discordActions.moveMessage(message.id, "up")}
+                        disabled={!canMoveUp}
+                        className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => discordActions.moveMessage(message.id, "down")}
+                        disabled={!canMoveDown}
+                        className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openMessageEditor(message)}
+                        className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     {!isGrouped ? (
                       <>
                         <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-discord-accent font-semibold text-white">
@@ -83,6 +150,135 @@ export function DiscordPreview() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      {editingMessage ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[24px] border border-white/10 bg-chrome-950 p-5 shadow-panel">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">
+                  Edit Message
+                </p>
+                <h3 className="mt-1 text-xl font-semibold text-white">
+                  Update conversation entry
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMessageId(null)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-chrome-300 transition hover:border-white/20 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-3">
+              <label className="block">
+                <span className="mb-1 block text-sm text-chrome-300">Type</span>
+                <select
+                  value={editingType}
+                  onChange={(event) =>
+                    setEditingType(event.target.value as "user" | "system")
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                >
+                  <option value="user">User message</option>
+                  <option value="system">System message</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm text-chrome-300">Author</span>
+                <select
+                  value={editingAuthorId}
+                  onChange={(event) => setEditingAuthorId(event.target.value)}
+                  disabled={editingType === "system"}
+                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
+                >
+                  {discordState.accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.username}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm text-chrome-300">Content</span>
+                <textarea
+                  value={editingContent}
+                  onChange={(event) => setEditingContent(event.target.value)}
+                  rows={6}
+                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-sm text-chrome-300">
+                <input
+                  type="checkbox"
+                  checked={editingManualTimestamp}
+                  onChange={(event) =>
+                    setEditingManualTimestamp(event.target.checked)
+                  }
+                />
+                Manual timestamp
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm text-chrome-300">Timestamp</span>
+                <input
+                  type="datetime-local"
+                  value={editingTimestamp}
+                  onChange={(event) => setEditingTimestamp(event.target.value)}
+                  disabled={!editingManualTimestamp}
+                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
+                />
+              </label>
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  discordActions.removeMessage(editingMessage.id);
+                  setEditingMessageId(null);
+                }}
+                className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300 transition hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-200"
+              >
+                Delete
+              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingMessageId(null)}
+                  className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300 transition hover:border-white/20 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    discordActions.updateMessage(editingMessage.id, {
+                      type: editingType,
+                      authorId: editingType === "system" ? null : editingAuthorId,
+                      content: editingContent,
+                      manualTimestamp: editingManualTimestamp,
+                      timestamp: editingManualTimestamp
+                        ? fromDateTimeLocalValue(editingTimestamp)
+                        : undefined,
+                    });
+                    setEditingMessageId(null);
+                  }}
+                  className="inline-flex items-center rounded-xl border border-discord-accent bg-discord-accent px-4 py-2 text-sm text-white transition hover:brightness-110"
+                >
+                  Save changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
