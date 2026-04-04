@@ -1,4 +1,5 @@
 export type DiscordMessageType = "user" | "system";
+export type DiscordTheme = "ash" | "dark";
 
 export interface DiscordAccount {
   id: string;
@@ -29,6 +30,7 @@ export interface DiscordMessage {
 export interface DiscordModuleState {
   serverName: string;
   channelName: string;
+  theme: DiscordTheme;
   accounts: DiscordAccount[];
   messages: DiscordMessage[];
 }
@@ -36,6 +38,7 @@ export interface DiscordModuleState {
 export interface DiscordWorkspacePatch {
   serverName?: string;
   channelName?: string;
+  theme?: DiscordTheme;
 }
 
 export interface DiscordAccountDraft {

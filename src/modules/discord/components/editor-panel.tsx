@@ -23,6 +23,18 @@ function fromDateTimeLocalValue(value: string) {
   return new Date(value).toISOString();
 }
 
+function getMentionQuery(value: string) {
+  const match = value.match(/(?:^|\s)@([\w-]*)$/);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function applyMention(value: string, username: string) {
+  return value.replace(/(?:^|\s)@([\w-]*)$/, (match) => {
+    const prefix = match.startsWith(" ") ? " " : "";
+    return `${prefix}@${username} `;
+  });
+}
+
 export function DiscordEditorPanel() {
   const { discordState, discordActions } = useAppContext();
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
@@ -42,6 +54,13 @@ export function DiscordEditorPanel() {
   const [newMessageTimestamp, setNewMessageTimestamp] = useState(
     toDateTimeLocalValue(new Date().toISOString()),
   );
+  const mentionQuery = getMentionQuery(newMessageContent);
+  const mentionSuggestions =
+    mentionQuery === null
+      ? []
+      : discordState.accounts.filter((account) =>
+          account.username.toLowerCase().startsWith(mentionQuery),
+        );
 
   return (
     <aside className="rounded-[24px] border border-white/10 bg-chrome-950/60 p-4">
@@ -103,6 +122,22 @@ export function DiscordEditorPanel() {
                   }
                   className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
                 />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm text-chrome-300">Theme</span>
+                <select
+                  value={discordState.theme}
+                  onChange={(event) =>
+                    discordActions.updateWorkspace({
+                      theme: event.target.value as "ash" | "dark",
+                    })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                >
+                  <option value="ash">Ash</option>
+                  <option value="dark">Dark</option>
+                </select>
               </label>
             </div>
           ) : null}
@@ -392,13 +427,37 @@ export function DiscordEditorPanel() {
 
                   <label className="block">
                     <span className="mb-1 block text-sm text-chrome-300">Content</span>
-                    <textarea
-                      value={newMessageContent}
-                      onChange={(event) => setNewMessageContent(event.target.value)}
-                      rows={3}
-                      className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
-                    />
-                  </label>
+                  <textarea
+                    value={newMessageContent}
+                    onChange={(event) => setNewMessageContent(event.target.value)}
+                    rows={3}
+                    className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                  />
+                </label>
+
+                {mentionSuggestions.length ? (
+                  <div className="rounded-xl border border-white/10 bg-chrome-900/80 p-2">
+                    <p className="mb-2 text-xs uppercase tracking-[0.2em] text-chrome-500">
+                      Mention Suggestions
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {mentionSuggestions.map((account) => (
+                        <button
+                          key={account.id}
+                          type="button"
+                          onClick={() =>
+                            setNewMessageContent((current) =>
+                              applyMention(current, account.username),
+                            )
+                          }
+                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                        >
+                          @{account.username}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
                   <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-sm text-chrome-300">
                     <input

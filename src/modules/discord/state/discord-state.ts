@@ -97,6 +97,7 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
 export function normalizeDiscordState(state: DiscordModuleState) {
   return {
     ...state,
+    theme: state.theme ?? "ash",
     accounts: state.accounts.map((account) => ({
       ...account,
       username: account.username.trim() || "New User",

@@ -3,6 +3,7 @@ import { DiscordModuleState } from "@/modules/discord/state/discord-types";
 export const initialDiscordState: DiscordModuleState = {
   serverName: "Fake Web Studio",
   channelName: "general",
+  theme: "ash",
   accounts: [
     {
       id: "account-1",

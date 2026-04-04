@@ -7,6 +7,19 @@ import { useAppContext } from "@/state/app-context";
 import type { DiscordMessage } from "@/modules/discord/state/discord-types";
 import { formatDiscordTimestamp } from "@/modules/discord/utils/format-discord-timestamp";
 
+const discordThemes = {
+  ash: {
+    background: "#323339",
+    text: "#f3f3f4",
+    mention: "#3b3f65",
+  },
+  dark: {
+    background: "#1a1a1e",
+    text: "#d9d9dc",
+    mention: "#292c51",
+  },
+} as const;
+
 function toDateTimeLocalValue(timestamp: string) {
   const date = new Date(timestamp);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
@@ -15,6 +28,18 @@ function toDateTimeLocalValue(timestamp: string) {
 
 function fromDateTimeLocalValue(value: string) {
   return new Date(value).toISOString();
+}
+
+function getMentionQuery(value: string) {
+  const match = value.match(/(?:^|\s)@([\w-]*)$/);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function applyMention(value: string, username: string) {
+  return value.replace(/(?:^|\s)@([\w-]*)$/, (match) => {
+    const prefix = match.startsWith(" ") ? " " : "";
+    return `${prefix}@${username} `;
+  });
 }
 
 function shouldGroupMessages(previousMessage: DiscordMessage | undefined, message: DiscordMessage) {
@@ -37,25 +62,25 @@ function shouldGroupMessages(previousMessage: DiscordMessage | undefined, messag
   return minutesBetween < 8;
 }
 
-function renderDiscordMarkdown(content: string) {
+function renderDiscordMarkdown(content: string, mentionColor: string) {
   const lines = content.split("\n");
 
   return lines.map((line, lineIndex) => (
     <Fragment key={`${line}-${lineIndex}`}>
-      {renderDiscordInlineMarkdown(line)}
+      {renderDiscordInlineMarkdown(line, mentionColor)}
       {lineIndex < lines.length - 1 ? <br /> : null}
     </Fragment>
   ));
 }
 
-function renderDiscordInlineMarkdown(content: string): ReactNode[] {
+function renderDiscordInlineMarkdown(content: string, mentionColor: string): ReactNode[] {
   const parts = content.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
 
   return parts.map((part, index) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
         <strong key={`${part}-${index}`} className="font-semibold">
-          {part.slice(2, -2)}
+          {renderMentionSpans(part.slice(2, -2), mentionColor)}
         </strong>
       );
     }
@@ -63,13 +88,36 @@ function renderDiscordInlineMarkdown(content: string): ReactNode[] {
     if (part.startsWith("*") && part.endsWith("*")) {
       return (
         <em key={`${part}-${index}`} className="italic">
-          {part.slice(1, -1)}
+          {renderMentionSpans(part.slice(1, -1), mentionColor)}
         </em>
       );
     }
 
-    return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
+    return (
+      <Fragment key={`${part}-${index}`}>
+        {renderMentionSpans(part, mentionColor)}
+      </Fragment>
+    );
   });
+}
+
+function renderMentionSpans(content: string, mentionColor: string): ReactNode[] {
+  return content
+    .split(/(@[\w-]+)/g)
+    .filter(Boolean)
+    .map((part, index) =>
+      part.startsWith("@") ? (
+        <span
+          key={`${part}-${index}`}
+          className="rounded px-1 py-0.5 font-medium"
+          style={{ backgroundColor: mentionColor }}
+        >
+          {part}
+        </span>
+      ) : (
+        <Fragment key={`${part}-${index}`}>{part}</Fragment>
+      ),
+    );
 }
 
 function MessageAvatar({
@@ -125,6 +173,7 @@ function MessageAttachments({ message }: { message: DiscordMessage }) {
 export function DiscordPreview() {
   const { canvasScale, discordState, discordActions } = useAppContext();
   const zoomStyle = { zoom: canvasScale } as CSSProperties;
+  const theme = discordThemes[discordState.theme];
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingType, setEditingType] = useState<"user" | "system">("user");
   const [editingAuthorId, setEditingAuthorId] = useState("");
@@ -136,6 +185,13 @@ export function DiscordPreview() {
 
   const editingMessage =
     discordState.messages.find((message) => message.id === editingMessageId) ?? null;
+  const editingMentionQuery = getMentionQuery(editingContent);
+  const editingMentionSuggestions =
+    editingMentionQuery === null
+      ? []
+      : discordState.accounts.filter((account) =>
+          account.username.toLowerCase().startsWith(editingMentionQuery),
+        );
 
   useEffect(() => {
     if (!editingMessage) {
@@ -172,7 +228,13 @@ export function DiscordPreview() {
 
       <div className="overflow-auto rounded-[20px] bg-discord-panel p-6">
         <div className="mx-auto transition-[zoom]" style={zoomStyle}>
-          <div className="w-[880px] max-w-full rounded-[16px] bg-discord-bg p-6 text-discord-text">
+          <div
+            className="w-[880px] max-w-full rounded-[16px] p-6"
+            style={{
+              backgroundColor: theme.background,
+              color: theme.text,
+            }}
+          >
             <div className="mb-6 border-b border-white/5 pb-4">
               <p className="text-lg font-semibold">
                 #{discordState.channelName}
@@ -227,7 +289,7 @@ export function DiscordPreview() {
                       <div className="flex items-center gap-3">
                         <div className="h-px flex-1 bg-white/5" />
                         <p className="text-center text-xs font-medium text-discord-muted">
-                          {renderDiscordMarkdown(message.content)}
+                          {renderDiscordMarkdown(message.content, theme.mention)}
                         </p>
                         <div className="h-px flex-1 bg-white/5" />
                       </div>
@@ -286,7 +348,7 @@ export function DiscordPreview() {
                             </span>
                           </div>
                           <div className="mt-0.5 whitespace-pre-wrap break-words text-discord-text">
-                            {renderDiscordMarkdown(message.content)}
+                            {renderDiscordMarkdown(message.content, theme.mention)}
                           </div>
                           <MessageAttachments message={message} />
                         </div>
@@ -296,7 +358,7 @@ export function DiscordPreview() {
                         <div aria-hidden="true" />
                         <div className="min-w-0">
                           <div className="whitespace-pre-wrap break-words text-discord-text">
-                            {renderDiscordMarkdown(message.content)}
+                            {renderDiscordMarkdown(message.content, theme.mention)}
                           </div>
                           <MessageAttachments message={message} />
                         </div>
@@ -373,6 +435,30 @@ export function DiscordPreview() {
                   className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
                 />
               </label>
+
+              {editingMentionSuggestions.length ? (
+                <div className="rounded-xl border border-white/10 bg-chrome-900/80 p-2">
+                  <p className="mb-2 text-xs uppercase tracking-[0.2em] text-chrome-500">
+                    Mention Suggestions
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {editingMentionSuggestions.map((account) => (
+                      <button
+                        key={account.id}
+                        type="button"
+                        onClick={() =>
+                          setEditingContent((current) =>
+                            applyMention(current, account.username),
+                          )
+                        }
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                      >
+                        @{account.username}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-sm text-chrome-300">
                 <input
