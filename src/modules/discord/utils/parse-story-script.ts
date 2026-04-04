@@ -25,6 +25,24 @@ function createId(prefix: string) {
 
 function parseAbsoluteTimestamp(value: string) {
   const trimmed = value.trim();
+  const naturalDateMatch = trimmed.match(
+    /^(Today|Yesterday)\s+(\d{1,2}:\d{2})$/i,
+  );
+
+  if (naturalDateMatch) {
+    const [, dayKeyword, timePart] = naturalDateMatch;
+    const baseDate = new Date();
+    baseDate.setSeconds(0, 0);
+
+    if (dayKeyword.toLowerCase() === "yesterday") {
+      baseDate.setDate(baseDate.getDate() - 1);
+    }
+
+    const [hours, minutes] = timePart.split(":").map(Number);
+    baseDate.setHours(hours, minutes, 0, 0);
+    return baseDate.toISOString();
+  }
+
   const normalized = trimmed.includes("T")
     ? trimmed
     : trimmed.replace(" ", "T");

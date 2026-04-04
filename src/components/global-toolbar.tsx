@@ -160,6 +160,8 @@ SYSTEM: Ava joined the server.
                   <p>`+2m | Ava: relative delay`</p>
                   <p>`SYSTEM: system event text`</p>
                   <p>`2026-04-04 14:30 | Lucas: explicit timestamp`</p>
+                  <p>`Today 21:03 | Cassius: natural current-day timestamp`</p>
+                  <p>`Yesterday 14:30 | Brutus: natural previous-day timestamp`</p>
                 </div>
               </div>
             </div>
