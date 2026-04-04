@@ -182,7 +182,7 @@ export function DiscordPreview() {
               </p>
             </div>
 
-            <div>
+            <div className="max-h-[680px] overflow-y-auto pr-2">
               {discordState.messages.map((message, index) => {
                 const authorAccount = discordState.accounts.find(
                   (account) => account.id === message.authorId,
