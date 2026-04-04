@@ -12,6 +12,7 @@ import {
   createDiscordAccount,
   createDiscordMessage,
   moveDiscordMessage,
+  normalizeDiscordState,
   patchDiscordWorkspace,
   removeDiscordAccount,
   removeDiscordMessage,
@@ -24,7 +25,9 @@ import type {
   DiscordMessagePatch,
   DiscordWorkspacePatch,
 } from "@/modules/discord/state/discord-types";
-import { AppState, ModuleId } from "@/state/app-types";
+import { initialStateSnapshot, type AppState, type ModuleId } from "@/state/app-types";
+import { parseStoryScript } from "@/modules/discord/utils/parse-story-script";
+import { parseImportedAppState, serializeAppState } from "@/state/import-export";
 import { loadStoredAppState, storeAppState } from "@/state/storage";
 
 interface DiscordActionSet {
@@ -44,14 +47,13 @@ interface DiscordActionSet {
 interface AppContextValue extends AppState {
   setActiveModule: (moduleId: ModuleId) => void;
   setCanvasScale: (value: number) => void;
+  exportState: () => string;
+  importState: (raw: string) => void;
+  importStory: (raw: string) => void;
   discordActions: DiscordActionSet;
 }
 
-const initialState: AppState = {
-  activeModule: "discord",
-  canvasScale: 1.6,
-  discordState: initialDiscordState,
-};
+const initialState: AppState = initialStateSnapshot;
 
 const AppContext = createContext<AppContextValue | null>(null);
 
@@ -67,7 +69,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return initialState;
     }
 
-    return { ...initialState, ...stored };
+    return {
+      ...initialState,
+      ...stored,
+      discordState: normalizeDiscordState(
+        stored.discordState ?? initialDiscordState,
+      ),
+    };
   });
 
   useEffect(() => {
@@ -80,6 +88,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState((current) => ({ ...current, activeModule })),
     setCanvasScale: (canvasScale) =>
       setState((current) => ({ ...current, canvasScale })),
+    exportState: () => serializeAppState(state),
+    importState: (raw) => {
+      const imported = parseImportedAppState(raw);
+      setState({
+        ...initialState,
+        ...imported,
+        discordState: normalizeDiscordState(imported.discordState),
+      });
+    },
+    importStory: (raw) => {
+      const discordState = normalizeDiscordState(parseStoryScript(raw));
+      setState((current) => ({
+        ...current,
+        activeModule: "discord",
+        discordState,
+      }));
+    },
     discordActions: {
       updateWorkspace: (patch) =>
         setState((current) => ({

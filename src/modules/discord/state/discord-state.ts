@@ -94,6 +94,24 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
   });
 }
 
+export function normalizeDiscordState(state: DiscordModuleState) {
+  return {
+    ...state,
+    accounts: state.accounts.map((account) => ({
+      ...account,
+      username: account.username.trim() || "New User",
+      avatarBase64: account.avatarBase64 ?? null,
+      roleColor: account.roleColor || DEFAULT_ROLE_COLOR,
+    })),
+    messages: reflowMessageTimestamps(
+      state.messages.map((message) => ({
+        ...message,
+        attachments: message.attachments ?? [],
+      })),
+    ),
+  };
+}
+
 export function patchDiscordWorkspace(
   state: DiscordModuleState,
   patch: DiscordWorkspacePatch,

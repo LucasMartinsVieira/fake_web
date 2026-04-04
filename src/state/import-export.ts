@@ -1,0 +1,115 @@
+import { initialDiscordState } from "@/modules/discord/state/discord-initial-state";
+import type {
+  DiscordAccount,
+  DiscordMessage,
+  DiscordModuleState,
+} from "@/modules/discord/state/discord-types";
+import { initialStateSnapshot, type AppState } from "@/state/app-types";
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
+function isAccount(value: unknown): value is DiscordAccount {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    isString(record.id) &&
+    isString(record.username) &&
+    (record.avatarBase64 === undefined ||
+      record.avatarBase64 === null ||
+      isString(record.avatarBase64)) &&
+    isString(record.roleColor)
+  );
+}
+
+function isMessage(value: unknown): value is DiscordMessage {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    isString(record.id) &&
+    (record.type === "user" || record.type === "system") &&
+    (record.authorId === null || isString(record.authorId)) &&
+    isString(record.authorName) &&
+    isString(record.roleColor) &&
+    isString(record.content) &&
+    isString(record.timestamp) &&
+    isBoolean(record.manualTimestamp) &&
+    Array.isArray(record.attachments)
+  );
+}
+
+function isDiscordModuleState(value: unknown): value is DiscordModuleState {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    isString(record.serverName) &&
+    isString(record.channelName) &&
+    Array.isArray(record.accounts) &&
+    record.accounts.every(isAccount) &&
+    Array.isArray(record.messages) &&
+    record.messages.every(isMessage)
+  );
+}
+
+export function serializeAppState(state: AppState) {
+  const exportableState: AppState = {
+    ...state,
+    discordState: {
+      ...state.discordState,
+      accounts: state.discordState.accounts.map((account) => ({
+        ...account,
+        avatarBase64: null,
+      })),
+    },
+  };
+
+  return JSON.stringify(exportableState, null, 2);
+}
+
+export function parseImportedAppState(raw: string): AppState {
+  const parsed = JSON.parse(raw) as Partial<AppState>;
+
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("The imported JSON is not a valid application state.");
+  }
+
+  const nextState: AppState = {
+    ...initialStateSnapshot,
+    ...parsed,
+    discordState: isDiscordModuleState(parsed.discordState)
+      ? parsed.discordState
+      : initialDiscordState,
+  };
+
+  if (!isDiscordModuleState(nextState.discordState)) {
+    throw new Error("The imported JSON has an invalid Discord state.");
+  }
+
+  return {
+    ...nextState,
+    discordState: {
+      ...nextState.discordState,
+      accounts: nextState.discordState.accounts.map((account) => ({
+        ...account,
+        avatarBase64: null,
+      })),
+    },
+  };
+}

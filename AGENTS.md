@@ -31,7 +31,7 @@
 - Support grouped messages so consecutive messages from the same user hide repeated avatar/name and use the tighter vertical spacing seen in Discord Web.
 - Support an account registry with:
   - username
-  - avatar stored as Base64
+  - avatar stored locally as Base64 for in-app editing/preview
   - role color
 - Support message types:
   - standard user message
@@ -50,8 +50,8 @@
   - accounts
   - messages
   - module settings
-  - any Base64 image data needed to restore the session
-- Import must restore the prior session exactly.
+  - no avatar Base64 payloads; avatars are re-added manually after import
+- Import must restore the prior session structure and content, except avatars which are intentionally omitted from portable JSON.
 - LocalStorage should auto-save frequently enough to prevent data loss without harming editing performance.
 
 ## Architecture Guardrails
@@ -116,7 +116,7 @@ src/
 - Discord fidelity can drift if layout tokens are improvised instead of standardized.
 - Zoom behavior will feel wrong if only the container changes size instead of the full rendered interface scaling together.
 - Unstructured state will make JSON portability and future modules harder.
-- Base64-heavy payloads can make LocalStorage large; keep the schema intentional and avoid duplicated image data.
+- Base64-heavy payloads can make LocalStorage and exports large; keep portable JSON intentionally lightweight and omit avatar image payloads.
 
 ## Working Assumptions
 - The first deliverable is a local-first frontend app, not a hosted service.
