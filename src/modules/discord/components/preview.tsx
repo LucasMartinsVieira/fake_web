@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Pencil, X } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
@@ -310,9 +311,10 @@ export function DiscordPreview() {
       </div>
       </div>
 
-      {editingMessage ? (
+      {editingMessage
+        ? createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-[24px] border border-white/10 bg-chrome-950 p-5 shadow-panel">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-[24px] border border-white/10 bg-chrome-950 p-5 shadow-panel">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">
@@ -435,8 +437,10 @@ export function DiscordPreview() {
               </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+      )
+        : null}
     </>
   );
 }
