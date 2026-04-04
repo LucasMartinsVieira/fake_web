@@ -10,7 +10,6 @@ import {
 import { generateNextTimestamp } from "@/modules/discord/utils/generate-next-timestamp";
 
 const DEFAULT_ROLE_COLOR = "#f2bd62";
-const DEFAULT_MESSAGE_GAP_MINUTES = 3;
 const DEFAULT_START_TIMESTAMP = "2026-04-03T15:00:00.000Z";
 
 function createId(prefix: string) {
@@ -46,6 +45,28 @@ function getAccountSnapshot(
   };
 }
 
+function hashString(value: string) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
+}
+
+function getAutoGapMinutes(previousMessage: DiscordMessage, message: DiscordMessage) {
+  const maxGapMinutes =
+    previousMessage.authorId !== message.authorId ||
+    previousMessage.type === "system" ||
+    message.type === "system"
+      ? 3
+      : 1;
+
+  const seed = `${previousMessage.id}:${message.id}:${previousMessage.authorId ?? "system"}:${message.authorId ?? "system"}`;
+  return hashString(seed) % (maxGapMinutes + 1);
+}
+
 function reflowMessageTimestamps(messages: DiscordMessage[]) {
   return messages.map((message, index, entries) => {
     if (index === 0) {
@@ -63,14 +84,12 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
       return message;
     }
 
-    const previousTimestamp = entries[index - 1]?.timestamp || DEFAULT_START_TIMESTAMP;
+    const previousMessage = entries[index - 1];
+    const previousTimestamp = previousMessage?.timestamp || DEFAULT_START_TIMESTAMP;
 
     return {
       ...message,
-      timestamp: generateNextTimestamp(
-        previousTimestamp,
-        DEFAULT_MESSAGE_GAP_MINUTES,
-      ),
+      timestamp: generateNextTimestamp(previousTimestamp, getAutoGapMinutes(previousMessage, message)),
     };
   });
 }
@@ -150,13 +169,8 @@ export function removeDiscordAccount(
   return {
     ...state,
     accounts: state.accounts.filter((account) => account.id !== accountId),
-    messages: state.messages.map((message) =>
-      message.authorId === accountId
-        ? {
-            ...message,
-            authorId: null,
-          }
-        : message,
+    messages: reflowMessageTimestamps(
+      state.messages.filter((message) => message.authorId !== accountId),
     ),
   };
 }
@@ -166,8 +180,6 @@ export function createDiscordMessage(
   draft: DiscordMessageDraft,
 ) {
   const author = getAccountSnapshot(state.accounts, draft.authorId);
-  const previousTimestamp =
-    state.messages[state.messages.length - 1]?.timestamp || DEFAULT_START_TIMESTAMP;
   const manualTimestamp = draft.manualTimestamp ?? false;
 
   const message: DiscordMessage = {
@@ -177,9 +189,7 @@ export function createDiscordMessage(
     authorName: draft.type === "system" ? "System" : author.authorName,
     roleColor: draft.type === "system" ? "#b5bac1" : author.roleColor,
     content: draft.content,
-    timestamp:
-      draft.timestamp ??
-      generateNextTimestamp(previousTimestamp, DEFAULT_MESSAGE_GAP_MINUTES),
+    timestamp: draft.timestamp ?? DEFAULT_START_TIMESTAMP,
     manualTimestamp,
     attachments: draft.attachments ?? [],
   };

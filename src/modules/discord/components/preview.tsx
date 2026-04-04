@@ -16,6 +16,26 @@ function fromDateTimeLocalValue(value: string) {
   return new Date(value).toISOString();
 }
 
+function shouldGroupMessages(previousMessage: DiscordMessage | undefined, message: DiscordMessage) {
+  if (!previousMessage) {
+    return false;
+  }
+
+  if (previousMessage.type === "system" || message.type === "system") {
+    return false;
+  }
+
+  if (previousMessage.authorId !== message.authorId) {
+    return false;
+  }
+
+  const previousTime = new Date(previousMessage.timestamp).getTime();
+  const currentTime = new Date(message.timestamp).getTime();
+  const minutesBetween = (currentTime - previousTime) / 60000;
+
+  return minutesBetween < 8;
+}
+
 function renderDiscordMarkdown(content: string) {
   const lines = content.split("\n");
 
@@ -166,12 +186,8 @@ export function DiscordPreview() {
                 const authorAccount = discordState.accounts.find(
                   (account) => account.id === message.authorId,
                 );
-                const isGrouped =
-                  message.type !== "system" &&
-                  index > 0 &&
-                  discordState.messages[index - 1]?.type !== "system" &&
-                  discordState.messages[index - 1]?.authorId ===
-                    message.authorId;
+                const previousMessage = discordState.messages[index - 1];
+                const isGrouped = shouldGroupMessages(previousMessage, message);
                 const canMoveUp = index > 0;
                 const canMoveDown = index < discordState.messages.length - 1;
 
