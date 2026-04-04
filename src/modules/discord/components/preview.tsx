@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Pencil, X } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
 import type { DiscordMessage } from "@/modules/discord/state/discord-types";
@@ -14,6 +14,91 @@ function toDateTimeLocalValue(timestamp: string) {
 
 function fromDateTimeLocalValue(value: string) {
   return new Date(value).toISOString();
+}
+
+function renderDiscordMarkdown(content: string) {
+  const lines = content.split("\n");
+
+  return lines.map((line, lineIndex) => (
+    <Fragment key={`${line}-${lineIndex}`}>
+      {renderDiscordInlineMarkdown(line)}
+      {lineIndex < lines.length - 1 ? <br /> : null}
+    </Fragment>
+  ));
+}
+
+function renderDiscordInlineMarkdown(content: string): ReactNode[] {
+  const parts = content.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={`${part}-${index}`} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return (
+        <em key={`${part}-${index}`} className="italic">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+
+    return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
+  });
+}
+
+function MessageAvatar({
+  avatarBase64,
+  authorName,
+}: {
+  avatarBase64: string | null;
+  authorName: string;
+}) {
+  if (avatarBase64) {
+    return (
+      <img
+        src={avatarBase64}
+        alt={authorName}
+        className="mt-0.5 h-10 w-10 rounded-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-discord-accent font-semibold text-white">
+      {authorName.slice(0, 1)}
+    </div>
+  );
+}
+
+function MessageAttachments({ message }: { message: DiscordMessage }) {
+  if (!message.attachments.length) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      {message.attachments.map((attachment) => (
+        <figure
+          key={attachment.id}
+          className="max-w-[400px] overflow-hidden rounded-2xl border border-white/10 bg-black/10"
+        >
+          <img
+            src={attachment.base64}
+            alt={attachment.name}
+            className="block max-h-[360px] w-full object-cover"
+          />
+          <figcaption className="border-t border-white/5 px-3 py-2 text-xs text-discord-muted">
+            {attachment.name}
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 
 export function DiscordPreview() {
@@ -78,12 +163,60 @@ export function DiscordPreview() {
 
             <div>
               {discordState.messages.map((message, index) => {
+                const authorAccount = discordState.accounts.find(
+                  (account) => account.id === message.authorId,
+                );
                 const isGrouped =
+                  message.type !== "system" &&
                   index > 0 &&
+                  discordState.messages[index - 1]?.type !== "system" &&
                   discordState.messages[index - 1]?.authorId ===
                     message.authorId;
                 const canMoveUp = index > 0;
                 const canMoveDown = index < discordState.messages.length - 1;
+
+                if (message.type === "system") {
+                  return (
+                    <article
+                      key={message.id}
+                      className="group relative mt-4 rounded-xl px-4 py-2 first:mt-0"
+                    >
+                      <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => discordActions.moveMessage(message.id, "up")}
+                          disabled={!canMoveUp}
+                          className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => discordActions.moveMessage(message.id, "down")}
+                          disabled={!canMoveDown}
+                          className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openMessageEditor(message)}
+                          className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-white/5" />
+                        <p className="text-center text-xs font-medium text-discord-muted">
+                          {renderDiscordMarkdown(message.content)}
+                        </p>
+                        <div className="h-px flex-1 bg-white/5" />
+                      </div>
+                    </article>
+                  );
+                }
 
                 return (
                   <article
@@ -119,9 +252,10 @@ export function DiscordPreview() {
                     </div>
                     {!isGrouped ? (
                       <>
-                        <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-discord-accent font-semibold text-white">
-                          {message.authorName.slice(0, 1)}
-                        </div>
+                        <MessageAvatar
+                          avatarBase64={authorAccount?.avatarBase64 ?? null}
+                          authorName={message.authorName}
+                        />
                         <div className="min-w-0">
                           <div className="flex items-baseline gap-2">
                             <span
@@ -134,13 +268,21 @@ export function DiscordPreview() {
                               {formatDiscordTimestamp(message.timestamp)}
                             </span>
                           </div>
-                          <p className="mt-0.5">{message.content}</p>
+                          <div className="mt-0.5 whitespace-pre-wrap break-words text-discord-text">
+                            {renderDiscordMarkdown(message.content)}
+                          </div>
+                          <MessageAttachments message={message} />
                         </div>
                       </>
                     ) : (
                       <>
                         <div aria-hidden="true" />
-                        <p>{message.content}</p>
+                        <div className="min-w-0">
+                          <div className="whitespace-pre-wrap break-words text-discord-text">
+                            {renderDiscordMarkdown(message.content)}
+                          </div>
+                          <MessageAttachments message={message} />
+                        </div>
                       </>
                     )}
                   </article>
