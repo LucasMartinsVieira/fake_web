@@ -105,6 +105,7 @@ export function parseStoryScript(raw: string): DiscordModuleState {
   let section: StorySection | null = null;
   let serverName = DEFAULT_SERVER_NAME;
   let channelName = DEFAULT_CHANNEL_NAME;
+  let theme: DiscordModuleState["theme"] = "ash";
   const accounts: DiscordAccount[] = [];
   const accountMap = new Map<string, DiscordAccount>();
   const messages: DiscordMessage[] = [];
@@ -145,6 +146,14 @@ export function parseStoryScript(raw: string): DiscordModuleState {
       if (key === "channel") {
         channelName = value;
         continue;
+      }
+
+      if (key === "theme") {
+        if (value === "ash" || value === "dark") {
+          theme = value;
+          continue;
+        }
+        throw new Error(`Invalid theme: "${value}"`);
       }
 
       throw new Error(`Unknown workspace key: "${key}"`);
@@ -245,6 +254,7 @@ export function parseStoryScript(raw: string): DiscordModuleState {
   return {
     serverName,
     channelName,
+    theme,
     accounts,
     messages,
   };
