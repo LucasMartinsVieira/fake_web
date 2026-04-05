@@ -85,6 +85,7 @@ function ensureAccount(
     username,
     avatarBase64: null,
     roleColor: getRoleColor(accounts.length),
+    status: "online",
   };
 
   accounts.push(account);
@@ -127,7 +128,9 @@ export function parseStoryScript(raw: string): DiscordModuleState {
     }
 
     if (!section) {
-      throw new Error("Story script must begin with a section like @workspace.");
+      throw new Error(
+        "Story script must begin with a section like @workspace.",
+      );
     }
 
     if (section === "workspace") {
@@ -160,7 +163,9 @@ export function parseStoryScript(raw: string): DiscordModuleState {
     }
 
     if (section === "accounts") {
-      const [usernamePart, colorPart] = line.split("|").map((part) => part.trim());
+      const [usernamePart, colorPart] = line
+        .split("|")
+        .map((part) => part.trim());
       const username = usernamePart;
 
       if (!username) {
@@ -187,7 +192,10 @@ export function parseStoryScript(raw: string): DiscordModuleState {
         if (left.startsWith("+")) {
           const previousTimestamp =
             messages[messages.length - 1]?.timestamp ?? DEFAULT_START_TIMESTAMP;
-          timestamp = generateNextTimestamp(previousTimestamp, parseGapMinutes(left));
+          timestamp = generateNextTimestamp(
+            previousTimestamp,
+            parseGapMinutes(left),
+          );
           manualTimestamp = true;
         } else {
           timestamp = parseAbsoluteTimestamp(left);
@@ -221,7 +229,8 @@ export function parseStoryScript(raw: string): DiscordModuleState {
           timestamp:
             timestamp ??
             generateNextTimestamp(
-              messages[messages.length - 1]?.timestamp ?? DEFAULT_START_TIMESTAMP,
+              messages[messages.length - 1]?.timestamp ??
+                DEFAULT_START_TIMESTAMP,
               1,
             ),
           manualTimestamp,

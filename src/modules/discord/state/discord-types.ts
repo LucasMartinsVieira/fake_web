@@ -1,11 +1,13 @@
 export type DiscordMessageType = "user" | "system";
 export type DiscordTheme = "ash" | "dark";
+export type DiscordUserStatus = "online" | "idle" | "dnd" | "invisible";
 
 export interface DiscordAccount {
   id: string;
   username: string;
   avatarBase64: string | null;
   roleColor: string;
+  status: DiscordUserStatus;
 }
 
 export interface DiscordAttachment {
@@ -45,6 +47,7 @@ export interface DiscordAccountDraft {
   username: string;
   avatarBase64?: string | null;
   roleColor?: string;
+  status?: DiscordUserStatus;
 }
 
 export interface DiscordMessageDraft {

@@ -25,20 +25,27 @@ import type {
   DiscordMessagePatch,
   DiscordWorkspacePatch,
 } from "@/modules/discord/state/discord-types";
-import { initialStateSnapshot, type AppState, type ModuleId } from "@/state/app-types";
+import {
+  initialStateSnapshot,
+  type AppState,
+  type ModuleId,
+} from "@/state/app-types";
 import { parseStoryScript } from "@/modules/discord/utils/parse-story-script";
-import { parseImportedAppState, serializeAppState } from "@/state/import-export";
+import {
+  parseImportedAppState,
+  serializeAppState,
+} from "@/state/import-export";
 import { loadStoredAppState, storeAppState } from "@/state/storage";
 
 interface DiscordActionSet {
   updateWorkspace: (patch: DiscordWorkspacePatch) => void;
-  addAccount: (draft: DiscordAccountDraft) => void;
+  createAccount: (draft: DiscordAccountDraft) => void;
   updateAccount: (
     accountId: string,
     patch: Partial<DiscordAccountDraft>,
   ) => void;
   removeAccount: (accountId: string) => void;
-  addMessage: (draft: DiscordMessageDraft) => void;
+  createMessage: (draft: DiscordMessageDraft) => void;
   updateMessage: (messageId: string, patch: DiscordMessagePatch) => void;
   removeMessage: (messageId: string) => void;
   moveMessage: (messageId: string, direction: "up" | "down") => void;
@@ -111,7 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...current,
           discordState: patchDiscordWorkspace(current.discordState, patch),
         })),
-      addAccount: (draft) =>
+      createAccount: (draft) =>
         setState((current) => ({
           ...current,
           discordState: createDiscordAccount(current.discordState, draft),
@@ -130,7 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...current,
           discordState: removeDiscordAccount(current.discordState, accountId),
         })),
-      addMessage: (draft) =>
+      createMessage: (draft) =>
         setState((current) => ({
           ...current,
           discordState: createDiscordMessage(current.discordState, draft),

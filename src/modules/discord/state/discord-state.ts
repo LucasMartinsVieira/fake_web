@@ -55,7 +55,10 @@ function hashString(value: string) {
   return hash;
 }
 
-function getAutoGapMinutes(previousMessage: DiscordMessage, message: DiscordMessage) {
+function getAutoGapMinutes(
+  previousMessage: DiscordMessage,
+  message: DiscordMessage,
+) {
   const maxGapMinutes =
     previousMessage.authorId !== message.authorId ||
     previousMessage.type === "system" ||
@@ -85,11 +88,15 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
     }
 
     const previousMessage = entries[index - 1];
-    const previousTimestamp = previousMessage?.timestamp || DEFAULT_START_TIMESTAMP;
+    const previousTimestamp =
+      previousMessage?.timestamp || DEFAULT_START_TIMESTAMP;
 
     return {
       ...message,
-      timestamp: generateNextTimestamp(previousTimestamp, getAutoGapMinutes(previousMessage, message)),
+      timestamp: generateNextTimestamp(
+        previousTimestamp,
+        getAutoGapMinutes(previousMessage, message),
+      ),
     };
   });
 }
@@ -103,6 +110,7 @@ export function normalizeDiscordState(state: DiscordModuleState) {
       username: account.username.trim() || "New User",
       avatarBase64: account.avatarBase64 ?? null,
       roleColor: account.roleColor || DEFAULT_ROLE_COLOR,
+      status: account.status || "online",
     })),
     messages: reflowMessageTimestamps(
       state.messages.map((message) => ({
@@ -132,6 +140,7 @@ export function createDiscordAccount(
     username: draft.username.trim() || "New User",
     avatarBase64: draft.avatarBase64 ?? null,
     roleColor: draft.roleColor ?? DEFAULT_ROLE_COLOR,
+    status: draft.status ?? "online",
   };
 
   return {
@@ -156,6 +165,7 @@ export function updateDiscordAccount(
               ? account.avatarBase64
               : patch.avatarBase64,
           roleColor: patch.roleColor ?? account.roleColor,
+          status: patch.status ?? account.status,
         }
       : account,
   );
@@ -231,7 +241,7 @@ export function updateDiscordMessage(
 
     const nextType = patch.type ?? message.type;
     const nextAuthorId =
-      nextType === "system" ? null : patch.authorId ?? message.authorId;
+      nextType === "system" ? null : (patch.authorId ?? message.authorId);
     const author = getAccountSnapshot(state.accounts, nextAuthorId);
 
     return {
@@ -279,8 +289,7 @@ export function moveDiscordMessage(
     return state;
   }
 
-  const targetIndex =
-    direction === "up" ? currentIndex - 1 : currentIndex + 1;
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
   if (targetIndex < 0 || targetIndex >= state.messages.length) {
     return state;

@@ -10,12 +10,14 @@ export const initialDiscordState: DiscordModuleState = {
       username: "Lucas",
       avatarBase64: null,
       roleColor: "#f2bd62",
+      status: "online",
     },
     {
       id: "account-2",
       username: "Ava",
       avatarBase64: null,
       roleColor: "#57f287",
+      status: "online",
     },
   ],
   messages: [

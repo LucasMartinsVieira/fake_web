@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
 import { fileToBase64 } from "@/utils/file-to-base64";
+import type { DiscordUserStatus } from "@/modules/discord/state/discord-types";
 
 function toDateTimeLocalValue(timestamp: string) {
   const date = new Date(timestamp);
@@ -41,16 +42,21 @@ export function DiscordEditorPanel() {
   const [accountsCollapsed, setAccountsCollapsed] = useState(true);
   const [messagesCollapsed, setMessagesCollapsed] = useState(true);
   const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountStatus, setNewAccountStatus] =
+    useState<DiscordUserStatus>("online");
   const [newAccountColor, setNewAccountColor] = useState("#f2bd62");
-  const [newAccountAvatarBase64, setNewAccountAvatarBase64] = useState<string | null>(
-    null,
+  const [newAccountAvatarBase64, setNewAccountAvatarBase64] = useState<
+    string | null
+  >(null);
+  const [newMessageType, setNewMessageType] = useState<"user" | "system">(
+    "user",
   );
-  const [newMessageType, setNewMessageType] = useState<"user" | "system">("user");
   const [newMessageAuthorId, setNewMessageAuthorId] = useState(
     discordState.accounts[0]?.id ?? "",
   );
   const [newMessageContent, setNewMessageContent] = useState("");
-  const [newMessageManualTimestamp, setNewMessageManualTimestamp] = useState(false);
+  const [newMessageManualTimestamp, setNewMessageManualTimestamp] =
+    useState(false);
   const [newMessageTimestamp, setNewMessageTimestamp] = useState(
     toDateTimeLocalValue(new Date().toISOString()),
   );
@@ -97,7 +103,9 @@ export function DiscordEditorPanel() {
           {!workspaceCollapsed ? (
             <div className="mt-4 space-y-3">
               <label className="block">
-                <span className="mb-1 block text-sm text-chrome-300">Server name</span>
+                <span className="mb-1 block text-sm text-chrome-300">
+                  Server name
+                </span>
                 <input
                   type="text"
                   value={discordState.serverName}
@@ -111,7 +119,9 @@ export function DiscordEditorPanel() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm text-chrome-300">Channel name</span>
+                <span className="mb-1 block text-sm text-chrome-300">
+                  Channel name
+                </span>
                 <input
                   type="text"
                   value={discordState.channelName}
@@ -125,7 +135,9 @@ export function DiscordEditorPanel() {
               </label>
 
               <label className="block">
-                <span className="mb-1 block text-sm text-chrome-300">Theme</span>
+                <span className="mb-1 block text-sm text-chrome-300">
+                  Theme
+                </span>
                 <select
                   value={discordState.theme}
                   onChange={(event) =>
@@ -249,10 +261,31 @@ export function DiscordEditorPanel() {
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                      <label className="block sm:w-[120px]">
+                        <span className="mb-1 block text-sm text-chrome-300">
+                          Status
+                        </span>
+                        <select
+                          value={account.status}
+                          onChange={(event) =>
+                            discordActions.updateAccount(account.id, {
+                              status: event.target.value as DiscordUserStatus,
+                            })
+                          }
+                          className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                        >
+                          <option value="online">Online</option>
+                          <option value="idle">Idle</option>
+                          <option value="dnd">Do Not Disturb</option>
+                          <option value="invisible">Invisible</option>
+                        </select>
+                      </label>
+
                       <label className="block sm:w-[108px]">
                         <span className="mb-1 block text-sm text-chrome-300">
                           Role color
                         </span>
+
                         <input
                           type="color"
                           value={account.roleColor}
@@ -321,7 +354,9 @@ export function DiscordEditorPanel() {
                         <input
                           type="text"
                           value={newAccountName}
-                          onChange={(event) => setNewAccountName(event.target.value)}
+                          onChange={(event) =>
+                            setNewAccountName(event.target.value)
+                          }
                           placeholder="New username"
                           className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
                         />
@@ -330,17 +365,41 @@ export function DiscordEditorPanel() {
                   </div>
 
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <label className="block sm:w-[108px]">
-                      <span className="mb-1 block text-sm text-chrome-300">
-                        Role color
-                      </span>
-                      <input
-                        type="color"
-                        value={newAccountColor}
-                        onChange={(event) => setNewAccountColor(event.target.value)}
-                        className="h-11 w-full rounded-xl border border-white/10 bg-chrome-900 p-1"
-                      />
-                    </label>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                      <label className="block sm:w-[120px]">
+                        <span className="mb-1 block text-sm text-chrome-300">
+                          Status
+                        </span>
+                        <select
+                          value={newAccountStatus}
+                          onChange={(event) =>
+                            setNewAccountStatus(
+                              event.target.value as DiscordUserStatus,
+                            )
+                          }
+                          className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                        >
+                          <option value="online">Online</option>
+                          <option value="idle">Idle</option>
+                          <option value="dnd">Do Not Disturb</option>
+                          <option value="invisible">Invisible</option>
+                        </select>
+                      </label>
+
+                      <label className="block sm:w-[108px]">
+                        <span className="mb-1 block text-sm text-chrome-300">
+                          Role color
+                        </span>
+                        <input
+                          type="color"
+                          value={newAccountColor}
+                          onChange={(event) =>
+                            setNewAccountColor(event.target.value)
+                          }
+                          className="h-11 w-full rounded-xl border border-white/10 bg-chrome-900 p-1"
+                        />
+                      </label>
+                    </div>
 
                     <button
                       type="button"
@@ -349,12 +408,15 @@ export function DiscordEditorPanel() {
                           return;
                         }
 
-                        discordActions.addAccount({
+                        discordActions.createAccount({
                           username: newAccountName,
                           roleColor: newAccountColor,
                           avatarBase64: newAccountAvatarBase64,
+                          status: newAccountStatus,
                         });
+
                         setNewAccountName("");
+                        setNewAccountStatus("online");
                         setNewAccountAvatarBase64(null);
                       }}
                       className="inline-flex items-center justify-center gap-2 rounded-xl border border-discord-accent bg-discord-accent px-3 py-2 text-sm text-white transition hover:brightness-110 sm:self-end"
@@ -381,7 +443,8 @@ export function DiscordEditorPanel() {
             <div className="flex-1">
               <h3 className="font-medium text-white">Messages</h3>
               <p className="text-sm text-chrome-300">
-                Compose new messages here. Existing messages are edited from the preview.
+                Compose new messages here. Existing messages are edited from the
+                preview.
               </p>
             </div>
             {messagesCollapsed ? (
@@ -396,11 +459,15 @@ export function DiscordEditorPanel() {
               <div className="rounded-2xl border border-dashed border-white/10 bg-chrome-900/40 p-3">
                 <div className="grid gap-3">
                   <label className="block">
-                    <span className="mb-1 block text-sm text-chrome-300">Type</span>
+                    <span className="mb-1 block text-sm text-chrome-300">
+                      Type
+                    </span>
                     <select
                       value={newMessageType}
                       onChange={(event) =>
-                        setNewMessageType(event.target.value as "user" | "system")
+                        setNewMessageType(
+                          event.target.value as "user" | "system",
+                        )
                       }
                       className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
                     >
@@ -410,10 +477,14 @@ export function DiscordEditorPanel() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block text-sm text-chrome-300">Author</span>
+                    <span className="mb-1 block text-sm text-chrome-300">
+                      Author
+                    </span>
                     <select
                       value={newMessageAuthorId}
-                      onChange={(event) => setNewMessageAuthorId(event.target.value)}
+                      onChange={(event) =>
+                        setNewMessageAuthorId(event.target.value)
+                      }
                       disabled={newMessageType === "system"}
                       className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
                     >
@@ -426,38 +497,42 @@ export function DiscordEditorPanel() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block text-sm text-chrome-300">Content</span>
-                  <textarea
-                    value={newMessageContent}
-                    onChange={(event) => setNewMessageContent(event.target.value)}
-                    rows={3}
-                    className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
-                  />
-                </label>
+                    <span className="mb-1 block text-sm text-chrome-300">
+                      Content
+                    </span>
+                    <textarea
+                      value={newMessageContent}
+                      onChange={(event) =>
+                        setNewMessageContent(event.target.value)
+                      }
+                      rows={3}
+                      className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                    />
+                  </label>
 
-                {mentionSuggestions.length ? (
-                  <div className="rounded-xl border border-white/10 bg-chrome-900/80 p-2">
-                    <p className="mb-2 text-xs uppercase tracking-[0.2em] text-chrome-500">
-                      Mention Suggestions
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {mentionSuggestions.map((account) => (
-                        <button
-                          key={account.id}
-                          type="button"
-                          onClick={() =>
-                            setNewMessageContent((current) =>
-                              applyMention(current, account.username),
-                            )
-                          }
-                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
-                        >
-                          @{account.username}
-                        </button>
-                      ))}
+                  {mentionSuggestions.length ? (
+                    <div className="rounded-xl border border-white/10 bg-chrome-900/80 p-2">
+                      <p className="mb-2 text-xs uppercase tracking-[0.2em] text-chrome-500">
+                        Mention Suggestions
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {mentionSuggestions.map((account) => (
+                          <button
+                            key={account.id}
+                            type="button"
+                            onClick={() =>
+                              setNewMessageContent((current) =>
+                                applyMention(current, account.username),
+                              )
+                            }
+                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                          >
+                            @{account.username}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : null}
+                  ) : null}
 
                   <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-sm text-chrome-300">
                     <input
@@ -471,11 +546,15 @@ export function DiscordEditorPanel() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block text-sm text-chrome-300">Timestamp</span>
+                    <span className="mb-1 block text-sm text-chrome-300">
+                      Timestamp
+                    </span>
                     <input
                       type="datetime-local"
                       value={newMessageTimestamp}
-                      onChange={(event) => setNewMessageTimestamp(event.target.value)}
+                      onChange={(event) =>
+                        setNewMessageTimestamp(event.target.value)
+                      }
                       disabled={!newMessageManualTimestamp}
                       className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent disabled:opacity-50"
                     />
@@ -488,9 +567,12 @@ export function DiscordEditorPanel() {
                         return;
                       }
 
-                      discordActions.addMessage({
+                      discordActions.createMessage({
                         type: newMessageType,
-                        authorId: newMessageType === "system" ? null : newMessageAuthorId,
+                        authorId:
+                          newMessageType === "system"
+                            ? null
+                            : newMessageAuthorId,
                         content: newMessageContent,
                         manualTimestamp: newMessageManualTimestamp,
                         timestamp: newMessageManualTimestamp
