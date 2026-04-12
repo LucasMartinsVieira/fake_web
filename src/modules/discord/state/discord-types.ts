@@ -5,7 +5,7 @@ export type DiscordUserStatus = "online" | "idle" | "dnd" | "invisible";
 export interface DiscordAccount {
   id: string;
   username: string;
-  avatarBase64: string | null;
+  avatarAssetId: string | null;
   roleColor: string;
   status: DiscordUserStatus;
 }
@@ -14,7 +14,7 @@ export interface DiscordAttachment {
   id: string;
   type: "image" | "gif";
   name: string;
-  base64: string;
+  assetId: string | null;
 }
 
 export interface DiscordMessage {
@@ -45,7 +45,7 @@ export interface DiscordWorkspacePatch {
 
 export interface DiscordAccountDraft {
   username: string;
-  avatarBase64?: string | null;
+  avatarAssetId?: string | null;
   roleColor?: string;
   status?: DiscordUserStatus;
 }

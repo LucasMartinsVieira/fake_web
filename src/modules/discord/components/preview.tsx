@@ -185,19 +185,19 @@ function UserStatusIcon({
 }
 
 function MessageAvatar({
-  avatarBase64,
+  avatarUrl,
   authorName,
   status,
   statusBg,
 }: {
-  avatarBase64: string | null;
+  avatarUrl: string | null;
   authorName: string;
   status?: DiscordUserStatus;
   statusBg?: string;
 }) {
-  const avatar = avatarBase64 ? (
+  const avatar = avatarUrl ? (
     <img
-      src={avatarBase64}
+      src={avatarUrl}
       alt={authorName}
       className="h-full w-full rounded-full object-cover"
     />
@@ -230,6 +230,8 @@ function MessageAvatar({
 }
 
 function MessageAttachments({ message }: { message: DiscordMessage }) {
+  const { assetUrls } = useAppContext();
+
   if (!message.attachments.length) {
     return null;
   }
@@ -241,11 +243,13 @@ function MessageAttachments({ message }: { message: DiscordMessage }) {
           key={attachment.id}
           className="max-w-[400px] overflow-hidden rounded-2xl border border-white/10 bg-black/10"
         >
-          <img
-            src={attachment.base64}
-            alt={attachment.name}
-            className="block max-h-[360px] w-full object-cover"
-          />
+          {attachment.assetId && assetUrls[attachment.assetId] ? (
+            <img
+              src={assetUrls[attachment.assetId]}
+              alt={attachment.name}
+              className="block max-h-[360px] w-full object-cover"
+            />
+          ) : null}
           <figcaption className="border-t border-white/5 px-3 py-2 text-xs text-discord-muted">
             {attachment.name}
           </figcaption>
@@ -257,10 +261,12 @@ function MessageAttachments({ message }: { message: DiscordMessage }) {
 
 function MemberList({
   accounts,
+  assetUrls,
   statusBg,
   isFullWidth = false,
 }: {
   accounts: DiscordAccount[];
+  assetUrls: Record<string, string>;
   statusBg: string;
   isFullWidth?: boolean;
 }) {
@@ -288,7 +294,11 @@ function MemberList({
               className="group flex items-center gap-3 rounded px-2 py-1.5 transition hover:bg-white/5"
             >
               <MessageAvatar
-                avatarBase64={account.avatarBase64}
+                avatarUrl={
+                  account.avatarAssetId
+                    ? (assetUrls[account.avatarAssetId] ?? null)
+                    : null
+                }
                 authorName={account.username}
                 status={account.status}
                 statusBg={statusBg}
@@ -316,7 +326,11 @@ function MemberList({
                 className="group flex items-center gap-3 rounded px-2 py-1.5 transition hover:bg-white/5 opacity-35 grayscale-[0.5]"
               >
                 <MessageAvatar
-                  avatarBase64={account.avatarBase64}
+                  avatarUrl={
+                    account.avatarAssetId
+                      ? (assetUrls[account.avatarAssetId] ?? null)
+                      : null
+                  }
                   authorName={account.username}
                 />
                 <span className="truncate font-medium text-discord-muted">
@@ -332,7 +346,8 @@ function MemberList({
 }
 
 export function DiscordPreview() {
-  const { canvasScale, discordState, discordActions } = useAppContext();
+  const { assetUrls, canvasScale, discordState, discordActions } =
+    useAppContext();
   const zoomStyle = { zoom: canvasScale } as CSSProperties;
   const theme = discordThemes[discordState.theme];
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -538,8 +553,11 @@ export function DiscordPreview() {
                           {!isGrouped ? (
                             <>
                               <MessageAvatar
-                                avatarBase64={
-                                  authorAccount?.avatarBase64 ?? null
+                                avatarUrl={
+                                  authorAccount?.avatarAssetId
+                                    ? (assetUrls[authorAccount.avatarAssetId] ??
+                                      null)
+                                    : null
                                 }
                                 authorName={message.authorName}
                               />
@@ -587,6 +605,7 @@ export function DiscordPreview() {
                 <div className="flex-1 p-6">
                   <MemberList
                     accounts={discordState.accounts}
+                    assetUrls={assetUrls}
                     statusBg={theme.background}
                     isFullWidth
                   />

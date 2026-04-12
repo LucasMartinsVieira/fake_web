@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -11,7 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
-import { fileToBase64 } from "@/utils/file-to-base64";
+import { saveAssetFile } from "@/state/asset-storage";
 import type { DiscordUserStatus } from "@/modules/discord/state/discord-types";
 
 function toDateTimeLocalValue(timestamp: string) {
@@ -37,7 +37,7 @@ function applyMention(value: string, username: string) {
 }
 
 export function DiscordEditorPanel() {
-  const { discordState, discordActions } = useAppContext();
+  const { assetUrls, discordState, discordActions } = useAppContext();
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
   const [accountsCollapsed, setAccountsCollapsed] = useState(true);
   const [messagesCollapsed, setMessagesCollapsed] = useState(true);
@@ -45,7 +45,10 @@ export function DiscordEditorPanel() {
   const [newAccountStatus, setNewAccountStatus] =
     useState<DiscordUserStatus>("online");
   const [newAccountColor, setNewAccountColor] = useState("#f2bd62");
-  const [newAccountAvatarBase64, setNewAccountAvatarBase64] = useState<
+  const [newAccountAvatarFile, setNewAccountAvatarFile] = useState<File | null>(
+    null,
+  );
+  const [newAccountAvatarPreviewUrl, setNewAccountAvatarPreviewUrl] = useState<
     string | null
   >(null);
   const [newMessageType, setNewMessageType] = useState<"user" | "system">(
@@ -67,6 +70,14 @@ export function DiscordEditorPanel() {
       : discordState.accounts.filter((account) =>
           account.username.toLowerCase().startsWith(mentionQuery),
         );
+
+  useEffect(() => {
+    return () => {
+      if (newAccountAvatarPreviewUrl) {
+        URL.revokeObjectURL(newAccountAvatarPreviewUrl);
+      }
+    };
+  }, [newAccountAvatarPreviewUrl]);
 
   return (
     <aside className="rounded-[24px] border border-white/10 bg-chrome-950/60 p-4">
@@ -196,10 +207,11 @@ export function DiscordEditorPanel() {
                     <div className="flex flex-col gap-4">
                       <div className="flex items-start gap-4">
                         <div className="relative h-[72px] w-[72px] shrink-0">
-                          {account.avatarBase64 ? (
+                          {account.avatarAssetId &&
+                          assetUrls[account.avatarAssetId] ? (
                             <>
                               <img
-                                src={account.avatarBase64}
+                                src={assetUrls[account.avatarAssetId]}
                                 alt={account.username}
                                 className="h-full w-full rounded-full border border-white/10 object-cover"
                               />
@@ -207,7 +219,7 @@ export function DiscordEditorPanel() {
                                 type="button"
                                 onClick={() =>
                                   discordActions.updateAccount(account.id, {
-                                    avatarBase64: null,
+                                    avatarAssetId: null,
                                   })
                                 }
                                 className="absolute inset-0 flex items-center justify-center rounded-full bg-black/65 text-white opacity-0 transition hover:bg-red-600/80 group-hover:opacity-100"
@@ -227,9 +239,9 @@ export function DiscordEditorPanel() {
                                     return;
                                   }
 
-                                  const avatarBase64 = await fileToBase64(file);
+                                  const avatarAssetId = await saveAssetFile(file);
                                   discordActions.updateAccount(account.id, {
-                                    avatarBase64,
+                                    avatarAssetId,
                                   });
                                   event.target.value = "";
                                 }}
@@ -308,16 +320,22 @@ export function DiscordEditorPanel() {
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start gap-4">
                     <div className="relative h-[72px] w-[72px] shrink-0">
-                      {newAccountAvatarBase64 ? (
+                      {newAccountAvatarPreviewUrl ? (
                         <>
                           <img
-                            src={newAccountAvatarBase64}
+                            src={newAccountAvatarPreviewUrl}
                             alt={newAccountName || "New account avatar"}
                             className="h-full w-full rounded-full border border-white/10 object-cover"
                           />
                           <button
                             type="button"
-                            onClick={() => setNewAccountAvatarBase64(null)}
+                            onClick={() => {
+                              if (newAccountAvatarPreviewUrl) {
+                                URL.revokeObjectURL(newAccountAvatarPreviewUrl);
+                              }
+                              setNewAccountAvatarFile(null);
+                              setNewAccountAvatarPreviewUrl(null);
+                            }}
                             className="absolute inset-0 flex items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-red-600/80"
                           >
                             <Trash2 className="h-6 w-6" />
@@ -335,8 +353,14 @@ export function DiscordEditorPanel() {
                                 return;
                               }
 
-                              const avatarBase64 = await fileToBase64(file);
-                              setNewAccountAvatarBase64(avatarBase64);
+                              setNewAccountAvatarFile(file);
+                              setNewAccountAvatarPreviewUrl((current) => {
+                                if (current) {
+                                  URL.revokeObjectURL(current);
+                                }
+
+                                return URL.createObjectURL(file);
+                              });
                               event.target.value = "";
                             }}
                             className="sr-only"
@@ -405,21 +429,32 @@ export function DiscordEditorPanel() {
 
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!newAccountName.trim()) {
                           return;
                         }
 
+                        const avatarAssetId = newAccountAvatarFile
+                          ? await saveAssetFile(newAccountAvatarFile)
+                          : null;
+
                         discordActions.createAccount({
                           username: newAccountName,
                           roleColor: newAccountColor,
-                          avatarBase64: newAccountAvatarBase64,
+                          avatarAssetId,
                           status: newAccountStatus,
                         });
 
                         setNewAccountName("");
                         setNewAccountStatus("online");
-                        setNewAccountAvatarBase64(null);
+                        setNewAccountAvatarFile(null);
+                        setNewAccountAvatarPreviewUrl((current) => {
+                          if (current) {
+                            URL.revokeObjectURL(current);
+                          }
+
+                          return null;
+                        });
                       }}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-discord-accent bg-discord-accent px-3 py-2 text-sm text-white transition hover:brightness-110"
                     >

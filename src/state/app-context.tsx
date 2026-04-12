@@ -4,6 +4,8 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -36,6 +38,11 @@ import {
   serializeAppState,
 } from "@/state/import-export";
 import { loadStoredAppState, storeAppState } from "@/state/storage";
+import {
+  loadAssetBlob,
+  saveAssetDataUrl,
+  syncStoredAssets,
+} from "@/state/asset-storage";
 
 interface DiscordActionSet {
   updateWorkspace: (patch: DiscordWorkspacePatch) => void;
@@ -52,6 +59,7 @@ interface DiscordActionSet {
 }
 
 interface AppContextValue extends AppState {
+  assetUrls: Record<string, string>;
   setActiveModule: (moduleId: ModuleId) => void;
   setCanvasScale: (value: number) => void;
   exportState: () => string;
@@ -63,6 +71,21 @@ interface AppContextValue extends AppState {
 const initialState: AppState = initialStateSnapshot;
 
 const AppContext = createContext<AppContextValue | null>(null);
+
+function collectReferencedAssetIds(state: AppState) {
+  return Array.from(
+    new Set([
+    ...state.discordState.accounts
+      .map((account) => account.avatarAssetId)
+      .filter((assetId): assetId is string => Boolean(assetId)),
+    ...state.discordState.messages.flatMap((message) =>
+      message.attachments
+        .map((attachment) => attachment.assetId)
+        .filter((assetId): assetId is string => Boolean(assetId)),
+    ),
+    ]),
+  );
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
@@ -84,13 +107,149 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ),
     };
   });
+  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
+  const assetUrlsRef = useRef<Record<string, string>>({});
+  const referencedAssetIds = useMemo(() => collectReferencedAssetIds(state), [state]);
 
   useEffect(() => {
-    storeAppState(state);
+    const timeoutId = window.setTimeout(() => {
+      storeAppState(state);
+    }, 200);
+
+    return () => window.clearTimeout(timeoutId);
   }, [state]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function migrateLegacyAssets() {
+      const nextAccounts = await Promise.all(
+        state.discordState.accounts.map(async (account) => {
+          const legacyAvatarBase64 = (
+            account as typeof account & { avatarBase64?: string | null }
+          ).avatarBase64;
+
+          if (!legacyAvatarBase64 || account.avatarAssetId) {
+            return account;
+          }
+
+          return {
+            ...account,
+            avatarAssetId: await saveAssetDataUrl(legacyAvatarBase64),
+          };
+        }),
+      );
+
+      const nextMessages = await Promise.all(
+        state.discordState.messages.map(async (message) => ({
+          ...message,
+          attachments: await Promise.all(
+            message.attachments.map(async (attachment) => {
+              const legacyBase64 = (
+                attachment as typeof attachment & { base64?: string }
+              ).base64;
+
+              if (!legacyBase64 || attachment.assetId) {
+                return attachment;
+              }
+
+              return {
+                ...attachment,
+                assetId: await saveAssetDataUrl(legacyBase64),
+              };
+            }),
+          ),
+        })),
+      );
+
+      const hasChanges =
+        nextAccounts.some(
+          (account, index) =>
+            account.avatarAssetId !== state.discordState.accounts[index]?.avatarAssetId,
+        ) ||
+        nextMessages.some((message, messageIndex) =>
+          message.attachments.some(
+            (attachment, attachmentIndex) =>
+              attachment.assetId !==
+              state.discordState.messages[messageIndex]?.attachments[attachmentIndex]
+                ?.assetId,
+          ),
+        );
+
+      if (!hasChanges || cancelled) {
+        return;
+      }
+
+      setState((current) => ({
+        ...current,
+        discordState: normalizeDiscordState({
+          ...current.discordState,
+          accounts: nextAccounts,
+          messages: nextMessages,
+        }),
+      }));
+    }
+
+    void migrateLegacyAssets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.discordState.accounts, state.discordState.messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateAssetUrls() {
+      const entries = await Promise.all(
+        referencedAssetIds.map(async (assetId) => {
+          const blob = await loadAssetBlob(assetId);
+          return blob ? ([assetId, URL.createObjectURL(blob)] as const) : null;
+        }),
+      );
+
+      if (cancelled) {
+        entries.forEach((entry) => {
+          if (entry) {
+            URL.revokeObjectURL(entry[1]);
+          }
+        });
+        return;
+      }
+
+      const nextAssetUrls = Object.fromEntries(
+        entries.filter((entry): entry is readonly [string, string] => entry !== null),
+      );
+      const previousAssetUrls = assetUrlsRef.current;
+
+      Object.entries(previousAssetUrls).forEach(([assetId, url]) => {
+        if (nextAssetUrls[assetId] !== url) {
+          URL.revokeObjectURL(url);
+        }
+      });
+
+      assetUrlsRef.current = nextAssetUrls;
+      setAssetUrls(nextAssetUrls);
+    }
+
+    void hydrateAssetUrls();
+    void syncStoredAssets(referencedAssetIds);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referencedAssetIds]);
+
+  useEffect(
+    () => () => {
+      Object.values(assetUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
 
   const value: AppContextValue = {
     ...state,
+    assetUrls,
     setActiveModule: (activeModule) =>
       setState((current) => ({ ...current, activeModule })),
     setCanvasScale: (canvasScale) =>

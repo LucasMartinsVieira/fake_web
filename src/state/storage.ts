@@ -18,5 +18,11 @@ export function loadStoredAppState() {
 }
 
 export function storeAppState(state: AppState) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch (error) {
+    console.error("Failed to persist app state to localStorage.", error);
+    return false;
+  }
 }

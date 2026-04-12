@@ -24,10 +24,31 @@ function isAccount(value: unknown): value is DiscordAccount {
   return (
     isString(record.id) &&
     isString(record.username) &&
-    (record.avatarBase64 === undefined ||
+    (record.avatarAssetId === undefined ||
+      record.avatarAssetId === null ||
+      isString(record.avatarAssetId) ||
       record.avatarBase64 === null ||
       isString(record.avatarBase64)) &&
     isString(record.roleColor)
+  );
+}
+
+function isAttachment(value: unknown): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    isString(record.id) &&
+    (record.type === "image" || record.type === "gif") &&
+    isString(record.name) &&
+    (record.assetId === undefined ||
+      record.assetId === null ||
+      isString(record.assetId) ||
+      record.base64 === undefined ||
+      isString(record.base64))
   );
 }
 
@@ -47,7 +68,8 @@ function isMessage(value: unknown): value is DiscordMessage {
     isString(record.content) &&
     isString(record.timestamp) &&
     isBoolean(record.manualTimestamp) &&
-    Array.isArray(record.attachments)
+    Array.isArray(record.attachments) &&
+    record.attachments.every(isAttachment)
   );
 }
 
@@ -75,7 +97,14 @@ export function serializeAppState(state: AppState) {
       ...state.discordState,
       accounts: state.discordState.accounts.map((account) => ({
         ...account,
-        avatarBase64: null,
+        avatarAssetId: null,
+      })),
+      messages: state.discordState.messages.map((message) => ({
+        ...message,
+        attachments: message.attachments.map((attachment) => ({
+          ...attachment,
+          assetId: null,
+        })),
       })),
     },
   };
@@ -108,7 +137,14 @@ export function parseImportedAppState(raw: string): AppState {
       ...nextState.discordState,
       accounts: nextState.discordState.accounts.map((account) => ({
         ...account,
-        avatarBase64: null,
+        avatarAssetId: null,
+      })),
+      messages: nextState.discordState.messages.map((message) => ({
+        ...message,
+        attachments: message.attachments.map((attachment) => ({
+          ...attachment,
+          assetId: null,
+        })),
       })),
     },
   };

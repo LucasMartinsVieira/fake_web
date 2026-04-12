@@ -105,17 +105,43 @@ export function normalizeDiscordState(state: DiscordModuleState) {
   return {
     ...state,
     theme: state.theme ?? "ash",
-    accounts: state.accounts.map((account) => ({
-      ...account,
-      username: account.username.trim() || "New User",
-      avatarBase64: account.avatarBase64 ?? null,
-      roleColor: account.roleColor || DEFAULT_ROLE_COLOR,
-      status: account.status || "online",
-    })),
+    accounts: state.accounts.map((account) => {
+      const legacyAccount = account as DiscordAccount & {
+        avatarBase64?: string | null;
+      };
+
+      return {
+        id: account.id,
+        username: account.username.trim() || "New User",
+        avatarAssetId: legacyAccount.avatarAssetId ?? null,
+        avatarBase64: legacyAccount.avatarBase64 ?? undefined,
+        roleColor: account.roleColor || DEFAULT_ROLE_COLOR,
+        status: account.status || "online",
+      };
+    }),
     messages: reflowMessageTimestamps(
       state.messages.map((message) => ({
-        ...message,
-        attachments: message.attachments ?? [],
+        id: message.id,
+        type: message.type,
+        authorId: message.authorId,
+        authorName: message.authorName,
+        roleColor: message.roleColor,
+        content: message.content,
+        timestamp: message.timestamp,
+        manualTimestamp: message.manualTimestamp,
+        attachments: (message.attachments ?? []).map((attachment) => {
+          const legacyAttachment = attachment as typeof attachment & {
+            base64?: string;
+          };
+
+          return {
+            id: attachment.id,
+            type: attachment.type,
+            name: attachment.name,
+            assetId: legacyAttachment.assetId ?? null,
+            base64: legacyAttachment.base64 ?? undefined,
+          };
+        }),
       })),
     ),
   };
@@ -138,7 +164,7 @@ export function createDiscordAccount(
   const account: DiscordAccount = {
     id: createId("account"),
     username: draft.username.trim() || "New User",
-    avatarBase64: draft.avatarBase64 ?? null,
+    avatarAssetId: draft.avatarAssetId ?? null,
     roleColor: draft.roleColor ?? DEFAULT_ROLE_COLOR,
     status: draft.status ?? "online",
   };
@@ -160,10 +186,10 @@ export function updateDiscordAccount(
           ...account,
           ...patch,
           username: patch.username?.trim() || account.username,
-          avatarBase64:
-            patch.avatarBase64 === undefined
-              ? account.avatarBase64
-              : patch.avatarBase64,
+          avatarAssetId:
+            patch.avatarAssetId === undefined
+              ? account.avatarAssetId
+              : patch.avatarAssetId,
           roleColor: patch.roleColor ?? account.roleColor,
           status: patch.status ?? account.status,
         }

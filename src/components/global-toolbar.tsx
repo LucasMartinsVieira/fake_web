@@ -5,6 +5,58 @@ import { createPortal } from "react-dom";
 import { Download, FileText, Upload, X, ZoomIn } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
 
+type SaveFilePickerOptions = {
+  suggestedName?: string;
+  types?: Array<{
+    description?: string;
+    accept: Record<string, string[]>;
+  }>;
+};
+
+type SaveFileHandle = {
+  createWritable: () => Promise<{
+    write: (data: Blob | string) => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+};
+
+type WindowWithSaveFilePicker = Window &
+  typeof globalThis & {
+    showSaveFilePicker?: (
+      options?: SaveFilePickerOptions,
+    ) => Promise<SaveFileHandle>;
+  };
+
+async function exportJsonWithPicker(rawJson: string) {
+  const fileBlob = new Blob([rawJson], { type: "application/json" });
+  const windowWithPicker = window as WindowWithSaveFilePicker;
+
+  if (windowWithPicker.showSaveFilePicker) {
+    const fileHandle = await windowWithPicker.showSaveFilePicker({
+      suggestedName: "fake-web-session.json",
+      types: [
+        {
+          description: "JSON Files",
+          accept: {
+            "application/json": [".json"],
+          },
+        },
+      ],
+    });
+    const writable = await fileHandle.createWritable();
+    await writable.write(fileBlob);
+    await writable.close();
+    return;
+  }
+
+  const url = URL.createObjectURL(fileBlob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "fake-web-session.json";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function GlobalToolbar() {
   const { canvasScale, exportState, importState, importStory, setCanvasScale } =
     useAppContext();
@@ -88,16 +140,23 @@ SYSTEM: Ava joined the server.
 
         <button
           type="button"
-          onClick={() => {
-            const blob = new Blob([exportState()], {
-              type: "application/json",
-            });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "fake-web-session.json";
-            link.click();
-            URL.revokeObjectURL(url);
+          onClick={async () => {
+            try {
+              await exportJsonWithPicker(exportState());
+            } catch (error) {
+              if (
+                error instanceof DOMException &&
+                error.name === "AbortError"
+              ) {
+                return;
+              }
+
+              window.alert(
+                error instanceof Error
+                  ? error.message
+                  : "Failed to export JSON.",
+              );
+            }
           }}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10"
         >

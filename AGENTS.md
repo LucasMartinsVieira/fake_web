@@ -13,7 +13,8 @@
 - Use `lucide-react` for icons.
 - Use React Context or Redux for state management.
 - Do not use a database.
-- Persist state through LocalStorage auto-save and JSON import/export.
+- Persist lightweight application state through LocalStorage auto-save and JSON import/export.
+- Store uploaded media binaries outside LocalStorage so large files do not break persistence.
 
 ## Core UX
 - Provide a module switcher with:
@@ -31,7 +32,7 @@
 - Support grouped messages so consecutive messages from the same user hide repeated avatar/name and use the tighter vertical spacing seen in Discord Web.
 - Support an account registry with:
   - username
-  - avatar stored locally as Base64 for in-app editing/preview
+  - avatar stored locally for in-app editing/preview
   - role color
 - Support message types:
   - standard user message
@@ -44,14 +45,15 @@
   - image and GIF attachments rendered with Discord-like rounded corners
 
 ## Persistence Rules
-- Convert every uploaded image to Base64 via `FileReader`.
 - Keep the full editable application state serializable to JSON.
+- Persist uploaded avatars and attachments as local binary assets outside `localStorage` to avoid quota crashes.
+- Keep only lightweight media references in the live application state.
 - Export JSON must contain:
   - accounts
   - messages
   - module settings
-  - no avatar Base64 payloads; avatars are re-added manually after import
-- Import must restore the prior session structure and content, except avatars which are intentionally omitted from portable JSON.
+  - no embedded avatar or attachment payloads; media is re-added manually after import
+- Import must restore the prior session structure and content, except media files which are intentionally omitted from portable JSON.
 - LocalStorage should auto-save frequently enough to prevent data loss without harming editing performance.
 
 ## Architecture Guardrails

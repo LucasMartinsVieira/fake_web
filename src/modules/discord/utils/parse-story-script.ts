@@ -83,7 +83,7 @@ function ensureAccount(
   const account: DiscordAccount = {
     id: createId("account"),
     username,
-    avatarBase64: null,
+    avatarAssetId: null,
     roleColor: getRoleColor(accounts.length),
     status: "online",
   };
