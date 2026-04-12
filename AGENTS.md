@@ -61,6 +61,9 @@
 - Separate domain models from presentational components where possible.
 - Prefer deterministic state updates and pure serialization logic to simplify import/export.
 
+## Git Conventions
+- Write commit messages using Conventional Commits format, for example `fix(discord): keep add-account actions inside the editor card`.
+
 ## Recommended Initial Structure
 ```text
 src/

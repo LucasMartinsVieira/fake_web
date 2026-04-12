@@ -278,7 +278,7 @@ function MemberList({
       } overflow-y-auto px-2 py-4`}
     >
       <div className="mb-6">
-        <h3 className="mb-2 px-2 text-xs font-semibold tracking-wider text-discord-muted">
+        <h3 className="mb-2 px-2 text-sm font-semibold tracking-wider text-discord-muted">
           Online — {onlineAccounts.length}
         </h3>
         <div className="space-y-0.5">
@@ -306,7 +306,7 @@ function MemberList({
 
       {offlineAccounts.length > 0 && (
         <div>
-          <h3 className="mb-2 px-2 text-xs font-semibold tracking-wider text-discord-muted">
+          <h3 className="mb-2 px-2 text-sm font-semibold tracking-wider text-discord-muted">
             Offline — {offlineAccounts.length}
           </h3>
           <div className="space-y-0.5">

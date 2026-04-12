@@ -179,128 +179,130 @@ export function DiscordEditorPanel() {
 
           {!accountsCollapsed ? (
             <div className="mt-4 space-y-3">
-              {discordState.accounts.map((account) => (
-                <div
-                  key={account.id}
-                  className="group relative rounded-2xl border border-white/10 bg-chrome-900/70 p-3"
-                >
-                  <button
-                    type="button"
-                    onClick={() => discordActions.removeAccount(account.id)}
-                    className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-chrome-300 opacity-0 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-200 group-hover:opacity-100"
+              <div className="max-h-[36rem] space-y-3 overflow-y-auto pr-1">
+                {discordState.accounts.map((account) => (
+                  <div
+                    key={account.id}
+                    className="group relative rounded-2xl border border-white/10 bg-chrome-900/70 p-3"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => discordActions.removeAccount(account.id)}
+                      className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-chrome-300 opacity-0 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-200 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
 
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className="relative h-[72px] w-[72px] shrink-0">
-                        {account.avatarBase64 ? (
-                          <>
-                            <img
-                              src={account.avatarBase64}
-                              alt={account.username}
-                              className="h-full w-full rounded-full border border-white/10 object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className="relative h-[72px] w-[72px] shrink-0">
+                          {account.avatarBase64 ? (
+                            <>
+                              <img
+                                src={account.avatarBase64}
+                                alt={account.username}
+                                className="h-full w-full rounded-full border border-white/10 object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  discordActions.updateAccount(account.id, {
+                                    avatarBase64: null,
+                                  })
+                                }
+                                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/65 text-white opacity-0 transition hover:bg-red-600/80 group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-6 w-6" />
+                              </button>
+                            </>
+                          ) : (
+                            <label className="flex h-full w-full cursor-pointer items-center justify-center rounded-full border border-dashed border-white/15 bg-black/20 text-white transition hover:border-discord-accent hover:bg-white/5">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (event) => {
+                                  const file = event.target.files?.[0];
+
+                                  if (!file) {
+                                    return;
+                                  }
+
+                                  const avatarBase64 = await fileToBase64(file);
+                                  discordActions.updateAccount(account.id, {
+                                    avatarBase64,
+                                  });
+                                  event.target.value = "";
+                                }}
+                                className="sr-only"
+                              />
+                              <span className="text-lg font-semibold text-white">
+                                {account.username.slice(0, 1) || "?"}
+                              </span>
+                            </label>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <label className="block">
+                            <span className="mb-1 block text-sm text-chrome-300">
+                              Username
+                            </span>
+                            <input
+                              type="text"
+                              value={account.username}
+                              onChange={(event) =>
                                 discordActions.updateAccount(account.id, {
-                                  avatarBase64: null,
+                                  username: event.target.value,
                                 })
                               }
-                              className="absolute inset-0 flex items-center justify-center rounded-full bg-black/65 text-white opacity-0 transition hover:bg-red-600/80 group-hover:opacity-100"
-                            >
-                              <Trash2 className="h-6 w-6" />
-                            </button>
-                          </>
-                        ) : (
-                          <label className="flex h-full w-full cursor-pointer items-center justify-center rounded-full border border-dashed border-white/15 bg-black/20 text-white transition hover:border-discord-accent hover:bg-white/5">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={async (event) => {
-                                const file = event.target.files?.[0];
-
-                                if (!file) {
-                                  return;
-                                }
-
-                                const avatarBase64 = await fileToBase64(file);
-                                discordActions.updateAccount(account.id, {
-                                  avatarBase64,
-                                });
-                                event.target.value = "";
-                              }}
-                              className="sr-only"
+                              className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
                             />
-                            <span className="text-lg font-semibold text-white">
-                              {account.username.slice(0, 1) || "?"}
-                            </span>
                           </label>
-                        )}
+                        </div>
                       </div>
 
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <label className="block">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <label className="block sm:w-[120px]">
                           <span className="mb-1 block text-sm text-chrome-300">
-                            Username
+                            Status
                           </span>
-                          <input
-                            type="text"
-                            value={account.username}
+                          <select
+                            value={account.status}
                             onChange={(event) =>
                               discordActions.updateAccount(account.id, {
-                                username: event.target.value,
+                                status: event.target.value as DiscordUserStatus,
                               })
                             }
                             className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                          >
+                            <option value="online">Online</option>
+                            <option value="idle">Idle</option>
+                            <option value="dnd">Do Not Disturb</option>
+                            <option value="invisible">Invisible</option>
+                          </select>
+                        </label>
+
+                        <label className="block sm:w-[108px]">
+                          <span className="mb-1 block text-sm text-chrome-300">
+                            Role color
+                          </span>
+
+                          <input
+                            type="color"
+                            value={account.roleColor}
+                            onChange={(event) =>
+                              discordActions.updateAccount(account.id, {
+                                roleColor: event.target.value,
+                              })
+                            }
+                            className="h-11 w-full rounded-xl border border-white/10 bg-chrome-900 p-1"
                           />
                         </label>
                       </div>
                     </div>
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                      <label className="block sm:w-[120px]">
-                        <span className="mb-1 block text-sm text-chrome-300">
-                          Status
-                        </span>
-                        <select
-                          value={account.status}
-                          onChange={(event) =>
-                            discordActions.updateAccount(account.id, {
-                              status: event.target.value as DiscordUserStatus,
-                            })
-                          }
-                          className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
-                        >
-                          <option value="online">Online</option>
-                          <option value="idle">Idle</option>
-                          <option value="dnd">Do Not Disturb</option>
-                          <option value="invisible">Invisible</option>
-                        </select>
-                      </label>
-
-                      <label className="block sm:w-[108px]">
-                        <span className="mb-1 block text-sm text-chrome-300">
-                          Role color
-                        </span>
-
-                        <input
-                          type="color"
-                          value={account.roleColor}
-                          onChange={(event) =>
-                            discordActions.updateAccount(account.id, {
-                              roleColor: event.target.value,
-                            })
-                          }
-                          className="h-11 w-full rounded-xl border border-white/10 bg-chrome-900 p-1"
-                        />
-                      </label>
-                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
               <div className="rounded-2xl border border-dashed border-white/10 bg-chrome-900/40 p-3">
                 <div className="flex flex-col gap-4">
@@ -364,7 +366,7 @@ export function DiscordEditorPanel() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                       <label className="block sm:w-[120px]">
                         <span className="mb-1 block text-sm text-chrome-300">
@@ -419,7 +421,7 @@ export function DiscordEditorPanel() {
                         setNewAccountStatus("online");
                         setNewAccountAvatarBase64(null);
                       }}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-discord-accent bg-discord-accent px-3 py-2 text-sm text-white transition hover:brightness-110 sm:self-end"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-discord-accent bg-discord-accent px-3 py-2 text-sm text-white transition hover:brightness-110"
                     >
                       <Plus className="h-4 w-4" />
                       Add account
