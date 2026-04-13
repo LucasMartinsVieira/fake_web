@@ -162,6 +162,49 @@ export function DiscordEditorPanel() {
                   <option value="dark">Dark</option>
                 </select>
               </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm text-chrome-300">
+                  Chat input target
+                </span>
+                <select
+                  value={discordState.inputTargetAccountId ?? ""}
+                  onChange={(event) =>
+                    discordActions.updateWorkspace({
+                      inputTargetAccountId: event.target.value || null,
+                    })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                >
+                  {discordState.accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      @{account.username}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm text-chrome-300">
+                  Typing indicator
+                </span>
+                <select
+                  value={discordState.typingAccountId ?? ""}
+                  onChange={(event) =>
+                    discordActions.updateWorkspace({
+                      typingAccountId: event.target.value || null,
+                    })
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-discord-accent"
+                >
+                  <option value="">Hidden</option>
+                  {discordState.accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      @{account.username} is typing
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           ) : null}
         </section>

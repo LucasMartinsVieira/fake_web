@@ -83,6 +83,12 @@ function isDiscordModuleState(value: unknown): value is DiscordModuleState {
   return (
     isString(record.serverName) &&
     isString(record.channelName) &&
+    (record.inputTargetAccountId === undefined ||
+      record.inputTargetAccountId === null ||
+      isString(record.inputTargetAccountId)) &&
+    (record.typingAccountId === undefined ||
+      record.typingAccountId === null ||
+      isString(record.typingAccountId)) &&
     Array.isArray(record.accounts) &&
     record.accounts.every(isAccount) &&
     Array.isArray(record.messages) &&

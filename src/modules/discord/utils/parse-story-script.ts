@@ -264,6 +264,8 @@ export function parseStoryScript(raw: string): DiscordModuleState {
     serverName,
     channelName,
     theme,
+    inputTargetAccountId: accounts[0]?.id ?? null,
+    typingAccountId: null,
     accounts,
     messages,
   };

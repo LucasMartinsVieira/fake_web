@@ -4,6 +4,8 @@ export const initialDiscordState: DiscordModuleState = {
   serverName: "Fake Web Studio",
   channelName: "general",
   theme: "ash",
+  inputTargetAccountId: "account-1",
+  typingAccountId: null,
   accounts: [
     {
       id: "account-1",

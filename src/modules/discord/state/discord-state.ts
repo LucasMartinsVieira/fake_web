@@ -102,23 +102,37 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
 }
 
 export function normalizeDiscordState(state: DiscordModuleState) {
+  const normalizedAccounts = state.accounts.map((account) => {
+    const legacyAccount = account as DiscordAccount & {
+      avatarBase64?: string | null;
+    };
+
+    return {
+      id: account.id,
+      username: account.username.trim() || "New User",
+      avatarAssetId: legacyAccount.avatarAssetId ?? null,
+      avatarBase64: legacyAccount.avatarBase64 ?? undefined,
+      roleColor: account.roleColor || DEFAULT_ROLE_COLOR,
+      status: account.status || "online",
+    };
+  });
+  const hasInputTarget = normalizedAccounts.some(
+    (account) => account.id === state.inputTargetAccountId,
+  );
+  const hasTypingAccount = normalizedAccounts.some(
+    (account) => account.id === state.typingAccountId,
+  );
+
   return {
     ...state,
     theme: state.theme ?? "ash",
-    accounts: state.accounts.map((account) => {
-      const legacyAccount = account as DiscordAccount & {
-        avatarBase64?: string | null;
-      };
-
-      return {
-        id: account.id,
-        username: account.username.trim() || "New User",
-        avatarAssetId: legacyAccount.avatarAssetId ?? null,
-        avatarBase64: legacyAccount.avatarBase64 ?? undefined,
-        roleColor: account.roleColor || DEFAULT_ROLE_COLOR,
-        status: account.status || "online",
-      };
-    }),
+    inputTargetAccountId:
+      state.inputTargetAccountId && hasInputTarget
+        ? state.inputTargetAccountId
+        : (normalizedAccounts[0]?.id ?? null),
+    typingAccountId:
+      state.typingAccountId && hasTypingAccount ? state.typingAccountId : null,
+    accounts: normalizedAccounts,
     messages: reflowMessageTimestamps(
       state.messages.map((message) => ({
         id: message.id,
@@ -221,9 +235,17 @@ export function removeDiscordAccount(
   state: DiscordModuleState,
   accountId: string,
 ) {
+  const accounts = state.accounts.filter((account) => account.id !== accountId);
+
   return {
     ...state,
-    accounts: state.accounts.filter((account) => account.id !== accountId),
+    accounts,
+    inputTargetAccountId:
+      state.inputTargetAccountId === accountId
+        ? (accounts[0]?.id ?? null)
+        : state.inputTargetAccountId,
+    typingAccountId:
+      state.typingAccountId === accountId ? null : state.typingAccountId,
     messages: reflowMessageTimestamps(
       state.messages.filter((message) => message.authorId !== accountId),
     ),

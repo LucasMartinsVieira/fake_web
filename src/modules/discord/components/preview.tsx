@@ -4,11 +4,20 @@ import { createPortal } from "react-dom";
 import {
   Fragment,
   useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { ArrowDown, ArrowUp, Pencil, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Gift,
+  Pencil,
+  Search,
+  X,
+  Plus,
+} from "lucide-react";
 import { useAppContext } from "@/state/app-context";
 import type {
   DiscordAccount,
@@ -259,6 +268,111 @@ function MessageAttachments({ message }: { message: DiscordMessage }) {
   );
 }
 
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-0.5">
+      <span className="h-1.5 w-1.5 rounded-full bg-[#b5bac1] opacity-60" />
+      <span className="h-1.5 w-1.5 rounded-full bg-[#b5bac1] opacity-80" />
+      <span className="h-1.5 w-1.5 rounded-full bg-[#b5bac1]" />
+    </div>
+  );
+}
+
+function ChatInputAction({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-[#b5bac1] transition hover:text-[#dbdee1] ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ChatInputPreview({
+  channelName,
+  inputTargetUsername,
+  typingUsername,
+  value,
+  onChange,
+}: {
+  channelName: string;
+  inputTargetUsername: string | null;
+  typingUsername: string | null;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const placeholder = inputTargetUsername
+    ? `Message @${inputTargetUsername}`
+    : `Message #${channelName}`;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <div className="mt-4 px-4 pb-1">
+      <div className="mb-1.5 min-h-6 text-[12px] leading-4 text-[#949ba4]">
+        {typingUsername ? (
+          <div className="flex items-center gap-1.5">
+            <TypingDots />
+            <span>
+              <span className="font-bold text-[#ffffff]">{typingUsername}</span>{" "}
+              is typing
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex min-h-[44px] items-start gap-2 rounded-lg bg-[#383a40] pl-3 pr-2 text-[#dbdee1] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+        <ChatInputAction className="mt-[6px] h-6 w-6 self-start text-[#b5bac1] hover:text-[#dbdee1]">
+          <Plus className="h-[22px] w-[22px] fill-current stroke-[1.75]" />
+        </ChatInputAction>
+
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          rows={1}
+          placeholder={placeholder}
+          className="min-h-[22px] flex-1 resize-none overflow-hidden bg-transparent py-[11px] text-[15px] leading-[22px] text-[#dbdee1] outline-none placeholder:text-[#949ba4]"
+        />
+
+        <div className="mt-[6px] flex shrink-0 items-center gap-0.5 self-start">
+          <ChatInputAction>
+            <Gift className="h-5 w-5 stroke-[1.85]" />
+          </ChatInputAction>
+          <ChatInputAction className="text-[12px] font-semibold tracking-[0.02em]">
+            GIF
+          </ChatInputAction>
+          <ChatInputAction>
+            <span className="relative block h-[18px] w-[18px] rounded-[4px] border-2 border-current">
+              <span className="absolute right-[-2px] top-[-2px] h-[7px] w-[7px] rounded-sm border-b-2 border-l-2 border-current bg-[#383a40]" />
+            </span>
+          </ChatInputAction>
+          <ChatInputAction className="text-[18px] leading-none">
+            ☺
+          </ChatInputAction>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MemberList({
   accounts,
   assetUrls,
@@ -351,7 +465,9 @@ export function DiscordPreview() {
   const zoomStyle = { zoom: canvasScale } as CSSProperties;
   const theme = discordThemes[discordState.theme];
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [previewView, setPreviewView] = useState<"chat" | "members">("chat");
+  const [previewView, setPreviewView] = useState<"chat" | "members" | "input">(
+    "chat",
+  );
   const [editingType, setEditingType] = useState<"user" | "system">("user");
   const [editingAuthorId, setEditingAuthorId] = useState("");
   const [editingContent, setEditingContent] = useState("");
@@ -359,6 +475,7 @@ export function DiscordPreview() {
   const [editingTimestamp, setEditingTimestamp] = useState(
     toDateTimeLocalValue(new Date().toISOString()),
   );
+  const [chatInputValue, setChatInputValue] = useState("");
 
   const editingMessage =
     discordState.messages.find((message) => message.id === editingMessageId) ??
@@ -370,6 +487,14 @@ export function DiscordPreview() {
       : discordState.accounts.filter((account) =>
           account.username.toLowerCase().startsWith(editingMentionQuery),
         );
+  const inputTargetAccount =
+    discordState.accounts.find(
+      (account) => account.id === discordState.inputTargetAccountId,
+    ) ?? null;
+  const typingAccount =
+    discordState.accounts.find(
+      (account) => account.id === discordState.typingAccountId,
+    ) ?? null;
 
   useEffect(() => {
     if (!editingMessage) {
@@ -421,6 +546,16 @@ export function DiscordPreview() {
             >
               Member List
             </button>
+            <button
+              onClick={() => setPreviewView("input")}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
+                previewView === "input"
+                  ? "bg-discord-accent text-white shadow-sm"
+                  : "text-chrome-300 hover:text-white"
+              }`}
+            >
+              Chat Input
+            </button>
           </div>
 
           <p className="text-sm text-chrome-300">
@@ -438,8 +573,8 @@ export function DiscordPreview() {
               }}
             >
               {previewView === "chat" ? (
-                <div className="flex-1 p-6">
-                  <div className="mb-6 border-b border-white/5 pb-4">
+                <div className="flex min-h-[760px] flex-col">
+                  <div className="border-b border-white/5 px-6 pb-4 pt-6">
                     <p className="text-lg font-semibold">
                       #{discordState.channelName}
                     </p>
@@ -448,25 +583,83 @@ export function DiscordPreview() {
                     </p>
                   </div>
 
-                  <div className="max-h-[680px] overflow-y-auto pr-2">
-                    {discordState.messages.map((message, index) => {
-                      const authorAccount = discordState.accounts.find(
-                        (account) => account.id === message.authorId,
-                      );
-                      const previousMessage = discordState.messages[index - 1];
-                      const isGrouped = shouldGroupMessages(
-                        previousMessage,
-                        message,
-                      );
-                      const canMoveUp = index > 0;
-                      const canMoveDown =
-                        index < discordState.messages.length - 1;
+                  <div className="flex-1 overflow-y-auto px-6 pt-6">
+                    <div className="pr-2">
+                      {discordState.messages.map((message, index) => {
+                        const authorAccount = discordState.accounts.find(
+                          (account) => account.id === message.authorId,
+                        );
+                        const previousMessage =
+                          discordState.messages[index - 1];
+                        const isGrouped = shouldGroupMessages(
+                          previousMessage,
+                          message,
+                        );
+                        const canMoveUp = index > 0;
+                        const canMoveDown =
+                          index < discordState.messages.length - 1;
 
-                      if (message.type === "system") {
+                        if (message.type === "system") {
+                          return (
+                            <article
+                              key={message.id}
+                              className="group relative mt-4 rounded-xl px-4 py-2 first:mt-0"
+                            >
+                              <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    discordActions.moveMessage(message.id, "up")
+                                  }
+                                  disabled={!canMoveUp}
+                                  className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                                >
+                                  <ArrowUp className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    discordActions.moveMessage(
+                                      message.id,
+                                      "down",
+                                    )
+                                  }
+                                  disabled={!canMoveDown}
+                                  className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                                >
+                                  <ArrowDown className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openMessageEditor(message)}
+                                  className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <div className="h-px flex-1 bg-white/5" />
+                                <p className="text-center text-xs font-medium text-discord-muted">
+                                  {renderDiscordMarkdown(
+                                    message.content,
+                                    theme.mention,
+                                  )}
+                                </p>
+                                <div className="h-px flex-1 bg-white/5" />
+                              </div>
+                            </article>
+                          );
+                        }
+
                         return (
                           <article
                             key={message.id}
-                            className="group relative mt-4 rounded-xl px-4 py-2 first:mt-0"
+                            className={`group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${
+                              isGrouped
+                                ? "py-[1px]"
+                                : "mt-4 pb-0.5 pt-1 first:mt-0"
+                            }`}
                           >
                             <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
                               <button
@@ -497,109 +690,70 @@ export function DiscordPreview() {
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             </div>
-
-                            <div className="flex items-center gap-3">
-                              <div className="h-px flex-1 bg-white/5" />
-                              <p className="text-center text-xs font-medium text-discord-muted">
-                                {renderDiscordMarkdown(
-                                  message.content,
-                                  theme.mention,
-                                )}
-                              </p>
-                              <div className="h-px flex-1 bg-white/5" />
-                            </div>
+                            {!isGrouped ? (
+                              <>
+                                <MessageAvatar
+                                  avatarUrl={
+                                    authorAccount?.avatarAssetId
+                                      ? (assetUrls[
+                                          authorAccount.avatarAssetId
+                                        ] ?? null)
+                                      : null
+                                  }
+                                  authorName={message.authorName}
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex items-baseline gap-2">
+                                    <span
+                                      className="font-medium"
+                                      style={{ color: message.roleColor }}
+                                    >
+                                      {message.authorName}
+                                    </span>
+                                    <span className="text-xs text-discord-muted">
+                                      {formatDiscordTimestamp(
+                                        message.timestamp,
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="mt-0.5 whitespace-pre-wrap break-words text-discord-text">
+                                    {renderDiscordMarkdown(
+                                      message.content,
+                                      theme.mention,
+                                    )}
+                                  </div>
+                                  <MessageAttachments message={message} />
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div aria-hidden="true" />
+                                <div className="min-w-0">
+                                  <div className="whitespace-pre-wrap break-words text-discord-text">
+                                    {renderDiscordMarkdown(
+                                      message.content,
+                                      theme.mention,
+                                    )}
+                                  </div>
+                                  <MessageAttachments message={message} />
+                                </div>
+                              </>
+                            )}
                           </article>
                         );
-                      }
-
-                      return (
-                        <article
-                          key={message.id}
-                          className={`group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${
-                            isGrouped
-                              ? "py-[1px]"
-                              : "mt-4 pb-0.5 pt-1 first:mt-0"
-                          }`}
-                        >
-                          <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                discordActions.moveMessage(message.id, "up")
-                              }
-                              disabled={!canMoveUp}
-                              className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-                            >
-                              <ArrowUp className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                discordActions.moveMessage(message.id, "down")
-                              }
-                              disabled={!canMoveDown}
-                              className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-                            >
-                              <ArrowDown className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openMessageEditor(message)}
-                              className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                          {!isGrouped ? (
-                            <>
-                              <MessageAvatar
-                                avatarUrl={
-                                  authorAccount?.avatarAssetId
-                                    ? (assetUrls[authorAccount.avatarAssetId] ??
-                                      null)
-                                    : null
-                                }
-                                authorName={message.authorName}
-                              />
-                              <div className="min-w-0">
-                                <div className="flex items-baseline gap-2">
-                                  <span
-                                    className="font-medium"
-                                    style={{ color: message.roleColor }}
-                                  >
-                                    {message.authorName}
-                                  </span>
-                                  <span className="text-xs text-discord-muted">
-                                    {formatDiscordTimestamp(message.timestamp)}
-                                  </span>
-                                </div>
-                                <div className="mt-0.5 whitespace-pre-wrap break-words text-discord-text">
-                                  {renderDiscordMarkdown(
-                                    message.content,
-                                    theme.mention,
-                                  )}
-                                </div>
-                                <MessageAttachments message={message} />
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div aria-hidden="true" />
-                              <div className="min-w-0">
-                                <div className="whitespace-pre-wrap break-words text-discord-text">
-                                  {renderDiscordMarkdown(
-                                    message.content,
-                                    theme.mention,
-                                  )}
-                                </div>
-                                <MessageAttachments message={message} />
-                              </div>
-                            </>
-                          )}
-                        </article>
-                      );
-                    })}
+                      })}
+                    </div>
                   </div>
+                </div>
+              ) : previewView === "input" ? (
+                <div className="min-h-[360px] p-6">
+                  <ChatInputPreview
+                    channelName={discordState.channelName}
+                    inputTargetUsername={inputTargetAccount?.username ?? null}
+                    typingUsername={typingAccount?.username ?? null}
+                    value={chatInputValue}
+                    onChange={setChatInputValue}
+                  />
                 </div>
               ) : (
                 <div className="flex-1 p-6">

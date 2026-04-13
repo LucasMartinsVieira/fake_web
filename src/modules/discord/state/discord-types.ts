@@ -33,6 +33,8 @@ export interface DiscordModuleState {
   serverName: string;
   channelName: string;
   theme: DiscordTheme;
+  inputTargetAccountId: string | null;
+  typingAccountId: string | null;
   accounts: DiscordAccount[];
   messages: DiscordMessage[];
 }
@@ -41,6 +43,8 @@ export interface DiscordWorkspacePatch {
   serverName?: string;
   channelName?: string;
   theme?: DiscordTheme;
+  inputTargetAccountId?: string | null;
+  typingAccountId?: string | null;
 }
 
 export interface DiscordAccountDraft {
