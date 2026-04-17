@@ -9,15 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Gift,
-  Pencil,
-  Search,
-  X,
-  Plus,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Gift, Pencil, X, Plus } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
 import type {
   DiscordAccount,
@@ -271,9 +263,9 @@ function MessageAttachments({ message }: { message: DiscordMessage }) {
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-0.5">
-      <span className="h-1.5 w-1.5 rounded-full bg-[#b5bac1] opacity-60" />
-      <span className="h-1.5 w-1.5 rounded-full bg-[#b5bac1] opacity-80" />
-      <span className="h-1.5 w-1.5 rounded-full bg-[#b5bac1]" />
+      <span className="discord-typing-dot h-2 w-2 rounded-full bg-[#d4d8dd] will-change-[opacity,transform]" />
+      <span className="discord-typing-dot h-2 w-2 rounded-full bg-[#d4d8dd] will-change-[opacity,transform]" />
+      <span className="discord-typing-dot h-2 w-2 rounded-full bg-[#d4d8dd] will-change-[opacity,transform]" />
     </div>
   );
 }
@@ -326,13 +318,13 @@ function ChatInputPreview({
 
   return (
     <div className="mt-4 px-4 pb-1">
-      <div className="mb-1.5 min-h-6 text-[12px] leading-4 text-[#949ba4]">
+      <div className="mb-1.5 ml-2 min-h-6 text-[12px] leading-4 text-[#949ba4]">
         {typingUsername ? (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-4">
             <TypingDots />
             <span>
               <span className="font-bold text-[#ffffff]">{typingUsername}</span>{" "}
-              is typing
+              is typing...
             </span>
           </div>
         ) : null}
