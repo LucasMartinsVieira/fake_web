@@ -6,6 +6,7 @@ export interface DiscordAccount {
   id: string;
   username: string;
   avatarAssetId: string | null;
+  avatarBase64?: string;
   roleColor: string;
   status: DiscordUserStatus;
 }
@@ -15,6 +16,7 @@ export interface DiscordAttachment {
   type: "image" | "gif";
   name: string;
   assetId: string | null;
+  base64?: string;
 }
 
 export interface DiscordMessage {
@@ -29,17 +31,26 @@ export interface DiscordMessage {
   attachments: DiscordAttachment[];
 }
 
-export interface DiscordModuleState {
+export interface DiscordStoryPart {
+  id: string;
+  label: string;
   serverName: string;
   channelName: string;
   theme: DiscordTheme;
   inputTargetAccountId: string | null;
   typingAccountId: string | null;
-  accounts: DiscordAccount[];
   messages: DiscordMessage[];
 }
 
-export interface DiscordWorkspacePatch {
+export interface DiscordModuleState {
+  storyTitle: string;
+  accounts: DiscordAccount[];
+  parts: DiscordStoryPart[];
+  activeStoryPartId: string | null;
+}
+
+export interface DiscordStoryPartPatch {
+  label?: string;
   serverName?: string;
   channelName?: string;
   theme?: DiscordTheme;

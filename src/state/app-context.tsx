@@ -13,6 +13,7 @@ import { initialDiscordState } from "@/modules/discord/state/discord-initial-sta
 import {
   createDiscordAccount,
   createDiscordMessage,
+  getActiveStoryPart,
   moveDiscordMessage,
   normalizeDiscordState,
   patchDiscordWorkspace,
@@ -25,7 +26,8 @@ import type {
   DiscordAccountDraft,
   DiscordMessageDraft,
   DiscordMessagePatch,
-  DiscordWorkspacePatch,
+  DiscordStoryPart,
+  DiscordStoryPartPatch,
 } from "@/modules/discord/state/discord-types";
 import {
   initialStateSnapshot,
@@ -45,7 +47,7 @@ import {
 } from "@/state/asset-storage";
 
 interface DiscordActionSet {
-  updateWorkspace: (patch: DiscordWorkspacePatch) => void;
+  updateWorkspace: (patch: DiscordStoryPartPatch) => void;
   createAccount: (draft: DiscordAccountDraft) => void;
   updateAccount: (
     accountId: string,
@@ -60,7 +62,9 @@ interface DiscordActionSet {
 
 interface AppContextValue extends AppState {
   assetUrls: Record<string, string>;
+  activeStoryPart: DiscordStoryPart;
   setActiveModule: (moduleId: ModuleId) => void;
+  setActiveStoryPart: (partId: string) => void;
   setCanvasScale: (value: number) => void;
   exportState: () => string;
   importState: (raw: string) => void;
@@ -75,14 +79,16 @@ const AppContext = createContext<AppContextValue | null>(null);
 function collectReferencedAssetIds(state: AppState) {
   return Array.from(
     new Set([
-    ...state.discordState.accounts
-      .map((account) => account.avatarAssetId)
-      .filter((assetId): assetId is string => Boolean(assetId)),
-    ...state.discordState.messages.flatMap((message) =>
-      message.attachments
-        .map((attachment) => attachment.assetId)
+      ...state.discordState.accounts
+        .map((account) => account.avatarAssetId)
         .filter((assetId): assetId is string => Boolean(assetId)),
-    ),
+      ...state.discordState.parts.flatMap((part) =>
+        part.messages.flatMap((message) =>
+          message.attachments
+            .map((attachment) => attachment.assetId)
+            .filter((assetId): assetId is string => Boolean(assetId)),
+        ),
+      ),
     ]),
   );
 }
@@ -107,9 +113,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ),
     };
   });
+
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const assetUrlsRef = useRef<Record<string, string>>({});
-  const referencedAssetIds = useMemo(() => collectReferencedAssetIds(state), [state]);
+  const referencedAssetIds = useMemo(
+    () => collectReferencedAssetIds(state),
+    [state],
+  );
+  const activeStoryPart = useMemo(
+    () => getActiveStoryPart(state.discordState),
+    [state.discordState],
+  );
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -129,54 +143,84 @@ export function AppProvider({ children }: { children: ReactNode }) {
             account as typeof account & { avatarBase64?: string | null }
           ).avatarBase64;
 
-          if (!legacyAvatarBase64 || account.avatarAssetId) {
-            return account;
+          if (!legacyAvatarBase64) {
+            return {
+              id: account.id,
+              username: account.username,
+              avatarAssetId: account.avatarAssetId,
+              roleColor: account.roleColor,
+              status: account.status,
+            };
           }
 
           return {
-            ...account,
-            avatarAssetId: await saveAssetDataUrl(legacyAvatarBase64),
+            id: account.id,
+            username: account.username,
+            avatarAssetId: account.avatarAssetId
+              ? account.avatarAssetId
+              : await saveAssetDataUrl(legacyAvatarBase64),
+            roleColor: account.roleColor,
+            status: account.status,
           };
         }),
       );
 
-      const nextMessages = await Promise.all(
-        state.discordState.messages.map(async (message) => ({
-          ...message,
-          attachments: await Promise.all(
-            message.attachments.map(async (attachment) => {
-              const legacyBase64 = (
-                attachment as typeof attachment & { base64?: string }
-              ).base64;
+      const nextParts = await Promise.all(
+        state.discordState.parts.map(async (part) => ({
+          ...part,
+          messages: await Promise.all(
+            part.messages.map(async (message) => ({
+              ...message,
+              attachments: await Promise.all(
+                message.attachments.map(async (attachment) => {
+                  const legacyBase64 = (
+                    attachment as typeof attachment & { base64?: string }
+                  ).base64;
 
-              if (!legacyBase64 || attachment.assetId) {
-                return attachment;
-              }
+                  if (!legacyBase64 || attachment.assetId) {
+                    return attachment;
+                  }
 
-              return {
-                ...attachment,
-                assetId: await saveAssetDataUrl(legacyBase64),
-              };
-            }),
+                  return {
+                    id: attachment.id,
+                    type: attachment.type,
+                    name: attachment.name,
+                    assetId: await saveAssetDataUrl(legacyBase64),
+                  };
+                }),
+              ),
+            })),
           ),
         })),
       );
 
-      const hasChanges =
-        nextAccounts.some(
-          (account, index) =>
-            account.avatarAssetId !== state.discordState.accounts[index]?.avatarAssetId,
-        ) ||
-        nextMessages.some((message, messageIndex) =>
+      const hasAccountChanges = nextAccounts.some(
+        (account, index) =>
+          account.avatarAssetId !== state.discordState.accounts[index]?.avatarAssetId,
+      ) || state.discordState.accounts.some((account) => {
+        const legacyAvatarBase64 = (
+          account as typeof account & { avatarBase64?: string | null }
+        ).avatarBase64;
+
+        return Boolean(legacyAvatarBase64);
+      });
+      const hasAttachmentChanges = nextParts.some((part, partIndex) =>
+        part.messages.some((message, messageIndex) =>
           message.attachments.some(
             (attachment, attachmentIndex) =>
               attachment.assetId !==
-              state.discordState.messages[messageIndex]?.attachments[attachmentIndex]
-                ?.assetId,
+              state.discordState.parts[partIndex]?.messages[messageIndex]?.attachments[
+                attachmentIndex
+              ]?.assetId,
           ),
-        );
+        ),
+      ) || state.discordState.parts.some((part) =>
+        part.messages.some((message) =>
+          message.attachments.some((attachment) => Boolean(attachment.base64)),
+        ),
+      );
 
-      if (!hasChanges || cancelled) {
+      if (cancelled || (!hasAccountChanges && !hasAttachmentChanges)) {
         return;
       }
 
@@ -185,7 +229,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         discordState: normalizeDiscordState({
           ...current.discordState,
           accounts: nextAccounts,
-          messages: nextMessages,
+          parts: nextParts,
         }),
       }));
     }
@@ -195,7 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [state.discordState.accounts, state.discordState.messages]);
+  }, [state.discordState.accounts, state.discordState.parts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -250,8 +294,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppContextValue = {
     ...state,
     assetUrls,
+    activeStoryPart,
     setActiveModule: (activeModule) =>
       setState((current) => ({ ...current, activeModule })),
+    setActiveStoryPart: (partId) =>
+      setState((current) => ({
+        ...current,
+        discordState: {
+          ...current.discordState,
+          activeStoryPartId: partId,
+        },
+      })),
     setCanvasScale: (canvasScale) =>
       setState((current) => ({ ...current, canvasScale })),
     exportState: () => serializeAppState(state),
@@ -275,7 +328,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateWorkspace: (patch) =>
         setState((current) => ({
           ...current,
-          discordState: patchDiscordWorkspace(current.discordState, patch),
+          discordState: patchDiscordWorkspace(
+            current.discordState,
+            patch,
+            current.discordState.activeStoryPartId ?? undefined,
+          ),
         })),
       createAccount: (draft) =>
         setState((current) => ({
@@ -299,7 +356,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createMessage: (draft) =>
         setState((current) => ({
           ...current,
-          discordState: createDiscordMessage(current.discordState, draft),
+          discordState: createDiscordMessage(
+            current.discordState,
+            draft,
+            current.discordState.activeStoryPartId ?? undefined,
+          ),
         })),
       updateMessage: (messageId, patch) =>
         setState((current) => ({
@@ -308,12 +369,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             current.discordState,
             messageId,
             patch,
+            current.discordState.activeStoryPartId ?? undefined,
           ),
         })),
       removeMessage: (messageId) =>
         setState((current) => ({
           ...current,
-          discordState: removeDiscordMessage(current.discordState, messageId),
+          discordState: removeDiscordMessage(
+            current.discordState,
+            messageId,
+            current.discordState.activeStoryPartId ?? undefined,
+          ),
         })),
       moveMessage: (messageId, direction) =>
         setState((current) => ({
@@ -322,6 +388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             current.discordState,
             messageId,
             direction,
+            current.discordState.activeStoryPartId ?? undefined,
           ),
         })),
     },

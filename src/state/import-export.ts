@@ -1,9 +1,12 @@
 import { initialDiscordState } from "@/modules/discord/state/discord-initial-state";
 import type {
   DiscordAccount,
+  DiscordAttachment,
   DiscordMessage,
   DiscordModuleState,
+  DiscordStoryPart,
 } from "@/modules/discord/state/discord-types";
+import { normalizeDiscordState } from "@/modules/discord/state/discord-state";
 import { initialStateSnapshot, type AppState } from "@/state/app-types";
 
 function isString(value: unknown): value is string {
@@ -29,11 +32,15 @@ function isAccount(value: unknown): value is DiscordAccount {
       isString(record.avatarAssetId) ||
       record.avatarBase64 === null ||
       isString(record.avatarBase64)) &&
-    isString(record.roleColor)
+    isString(record.roleColor) &&
+    (record.status === "online" ||
+      record.status === "idle" ||
+      record.status === "dnd" ||
+      record.status === "invisible")
   );
 }
 
-function isAttachment(value: unknown): boolean {
+function isAttachment(value: unknown): value is DiscordAttachment {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -73,7 +80,50 @@ function isMessage(value: unknown): value is DiscordMessage {
   );
 }
 
+function isPart(value: unknown): value is DiscordStoryPart {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    isString(record.id) &&
+    isString(record.label) &&
+    isString(record.serverName) &&
+    isString(record.channelName) &&
+    (record.theme === "ash" || record.theme === "dark") &&
+    (record.inputTargetAccountId === undefined ||
+      record.inputTargetAccountId === null ||
+      isString(record.inputTargetAccountId)) &&
+    (record.typingAccountId === undefined ||
+      record.typingAccountId === null ||
+      isString(record.typingAccountId)) &&
+    Array.isArray(record.messages) &&
+    record.messages.every(isMessage)
+  );
+}
+
 function isDiscordModuleState(value: unknown): value is DiscordModuleState {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    isString(record.storyTitle) &&
+    Array.isArray(record.accounts) &&
+    record.accounts.every(isAccount) &&
+    Array.isArray(record.parts) &&
+    record.parts.every(isPart) &&
+    (record.activeStoryPartId === undefined ||
+      record.activeStoryPartId === null ||
+      isString(record.activeStoryPartId))
+  );
+}
+
+function isLegacyDiscordState(value: unknown): value is Partial<DiscordModuleState> & Record<string, unknown> {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -83,12 +133,6 @@ function isDiscordModuleState(value: unknown): value is DiscordModuleState {
   return (
     isString(record.serverName) &&
     isString(record.channelName) &&
-    (record.inputTargetAccountId === undefined ||
-      record.inputTargetAccountId === null ||
-      isString(record.inputTargetAccountId)) &&
-    (record.typingAccountId === undefined ||
-      record.typingAccountId === null ||
-      isString(record.typingAccountId)) &&
     Array.isArray(record.accounts) &&
     record.accounts.every(isAccount) &&
     Array.isArray(record.messages) &&
@@ -102,14 +146,20 @@ export function serializeAppState(state: AppState) {
     discordState: {
       ...state.discordState,
       accounts: state.discordState.accounts.map((account) => ({
-        ...account,
         avatarAssetId: null,
+        id: account.id,
+        username: account.username,
+        roleColor: account.roleColor,
+        status: account.status,
       })),
-      messages: state.discordState.messages.map((message) => ({
-        ...message,
-        attachments: message.attachments.map((attachment) => ({
-          ...attachment,
-          assetId: null,
+      parts: state.discordState.parts.map((part) => ({
+        ...part,
+        messages: part.messages.map((message) => ({
+          ...message,
+          attachments: message.attachments.map((attachment) => ({
+            ...attachment,
+            assetId: null,
+          })),
         })),
       })),
     },
@@ -125,33 +175,19 @@ export function parseImportedAppState(raw: string): AppState {
     throw new Error("The imported JSON is not a valid application state.");
   }
 
-  const nextState: AppState = {
-    ...initialStateSnapshot,
-    ...parsed,
-    discordState: isDiscordModuleState(parsed.discordState)
-      ? parsed.discordState
-      : initialDiscordState,
-  };
+  const discordState = parsed.discordState;
 
-  if (!isDiscordModuleState(nextState.discordState)) {
+  if (!isDiscordModuleState(discordState) && !isLegacyDiscordState(discordState)) {
     throw new Error("The imported JSON has an invalid Discord state.");
   }
 
+  const normalizedDiscordState = normalizeDiscordState(
+    (discordState ?? initialDiscordState) as Partial<DiscordModuleState> & Record<string, unknown>,
+  );
+
   return {
-    ...nextState,
-    discordState: {
-      ...nextState.discordState,
-      accounts: nextState.discordState.accounts.map((account) => ({
-        ...account,
-        avatarAssetId: null,
-      })),
-      messages: nextState.discordState.messages.map((message) => ({
-        ...message,
-        attachments: message.attachments.map((attachment) => ({
-          ...attachment,
-          assetId: null,
-        })),
-      })),
-    },
+    ...initialStateSnapshot,
+    ...parsed,
+    discordState: normalizedDiscordState,
   };
 }
