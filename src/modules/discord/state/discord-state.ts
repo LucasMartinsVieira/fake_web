@@ -5,17 +5,12 @@ import {
   DiscordMessageDraft,
   DiscordMessagePatch,
   DiscordModuleState,
-  DiscordStoryPart,
-  DiscordStoryPartPatch,
+  DiscordWorkspacePatch,
 } from "@/modules/discord/state/discord-types";
 import { generateNextTimestamp } from "@/modules/discord/utils/generate-next-timestamp";
 
 const DEFAULT_ROLE_COLOR = "#f2bd62";
 const DEFAULT_START_TIMESTAMP = "2026-04-03T15:00:00.000Z";
-const DEFAULT_STORY_TITLE = "Untitled Story";
-const DEFAULT_PART_LABEL = "Part 1";
-const DEFAULT_SERVER_NAME = "Fake Web Studio";
-const DEFAULT_CHANNEL_NAME = "general";
 
 function createId(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}`;
@@ -47,19 +42,6 @@ function getAccountSnapshot(
     authorId: account.id,
     authorName: account.username,
     roleColor: account.roleColor,
-  };
-}
-
-function createDefaultStoryPart(): DiscordStoryPart {
-  return {
-    id: createId("part"),
-    label: DEFAULT_PART_LABEL,
-    serverName: DEFAULT_SERVER_NAME,
-    channelName: DEFAULT_CHANNEL_NAME,
-    theme: "ash",
-    inputTargetAccountId: null,
-    typingAccountId: null,
-    messages: [],
   };
 }
 
@@ -119,94 +101,8 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
   });
 }
 
-function normalizeMessages(messages: DiscordMessage[]) {
-  return reflowMessageTimestamps(
-    messages.map((message) => ({
-      id: message.id,
-      type: message.type,
-      authorId: message.authorId,
-      authorName: message.authorName,
-      roleColor: message.roleColor,
-      content: message.content,
-      timestamp: message.timestamp,
-      manualTimestamp: message.manualTimestamp,
-      attachments: (message.attachments ?? []).map((attachment) => {
-        const legacyAttachment = attachment as typeof attachment & {
-          base64?: string;
-        };
-
-        return {
-          id: attachment.id,
-          type: attachment.type,
-          name: attachment.name,
-          assetId: legacyAttachment.assetId ?? null,
-          base64: legacyAttachment.base64 ?? undefined,
-        };
-      }),
-    })),
-  );
-}
-
-function normalizePart(
-  part: Partial<DiscordStoryPart> & { messages?: DiscordMessage[] },
-  accounts: DiscordAccount[],
-): DiscordStoryPart {
-  const hasInputTarget = accounts.some(
-    (account) => account.id === part.inputTargetAccountId,
-  );
-  const hasTypingAccount = accounts.some(
-    (account) => account.id === part.typingAccountId,
-  );
-
-  return {
-    id: part.id ?? createId("part"),
-    label: part.label?.trim() || DEFAULT_PART_LABEL,
-    serverName: part.serverName?.trim() || DEFAULT_SERVER_NAME,
-    channelName: part.channelName?.trim() || DEFAULT_CHANNEL_NAME,
-    theme: part.theme ?? "ash",
-    inputTargetAccountId:
-      part.inputTargetAccountId && hasInputTarget
-        ? part.inputTargetAccountId
-        : (accounts[0]?.id ?? null),
-    typingAccountId:
-      part.typingAccountId && hasTypingAccount ? part.typingAccountId : null,
-    messages: normalizeMessages(part.messages ?? []),
-  };
-}
-
-function normalizeLegacyState(state: Partial<DiscordModuleState>) {
-  const record = state as Record<string, unknown>;
-  const legacyPart = normalizePart(
-    {
-      id: createId("part"),
-      label: DEFAULT_PART_LABEL,
-      serverName: (record.serverName as string | undefined) ?? DEFAULT_SERVER_NAME,
-      channelName: (record.channelName as string | undefined) ?? DEFAULT_CHANNEL_NAME,
-      theme: (record.theme as DiscordModuleState["parts"][number]["theme"] | undefined) ?? "ash",
-      inputTargetAccountId: (record.inputTargetAccountId as string | null | undefined) ?? null,
-      typingAccountId: (record.typingAccountId as string | null | undefined) ?? null,
-      messages: (record.messages as DiscordMessage[] | undefined) ?? [],
-    },
-    (record.accounts as DiscordAccount[] | undefined) ?? [],
-  );
-
-  return {
-    storyTitle: (record.storyTitle as string | undefined)?.trim() || DEFAULT_STORY_TITLE,
-    accounts: ((record.accounts as DiscordAccount[] | undefined) ?? []).map((account) => ({
-      id: account.id,
-      username: account.username.trim() || "New User",
-      avatarAssetId: account.avatarAssetId ?? null,
-      roleColor: account.roleColor || DEFAULT_ROLE_COLOR,
-      status: account.status || "online",
-    })),
-    parts: [legacyPart],
-    activeStoryPartId: legacyPart.id,
-  } satisfies DiscordModuleState;
-}
-
-function normalizeStoryState(state: Partial<DiscordModuleState>) {
-  const record = state as Record<string, unknown>;
-  const normalizedAccounts = ((record.accounts as DiscordAccount[] | undefined) ?? []).map((account) => {
+export function normalizeDiscordState(state: DiscordModuleState) {
+  const normalizedAccounts = state.accounts.map((account) => {
     const legacyAccount = account as DiscordAccount & {
       avatarBase64?: string | null;
     };
@@ -220,64 +116,58 @@ function normalizeStoryState(state: Partial<DiscordModuleState>) {
       status: account.status || "online",
     };
   });
-
-  const normalizedParts = Array.isArray(record.parts) && record.parts.length
-    ? (record.parts as Array<Partial<DiscordStoryPart> & { messages?: DiscordMessage[] }>).map((part) =>
-        normalizePart(part as Partial<DiscordStoryPart> & { messages?: DiscordMessage[] }, normalizedAccounts),
-      )
-    : [normalizePart(createDefaultStoryPart(), normalizedAccounts)];
-
-  const activePartExists = normalizedParts.some(
-    (part) => part.id === record.activeStoryPartId,
+  const hasInputTarget = normalizedAccounts.some(
+    (account) => account.id === state.inputTargetAccountId,
+  );
+  const hasTypingAccount = normalizedAccounts.some(
+    (account) => account.id === state.typingAccountId,
   );
 
-  return {
-    storyTitle: (record.storyTitle as string | undefined)?.trim() || DEFAULT_STORY_TITLE,
-    accounts: normalizedAccounts,
-    parts: normalizedParts,
-    activeStoryPartId: activePartExists ? ((record.activeStoryPartId as string | null | undefined) ?? null) : normalizedParts[0]?.id ?? null,
-  } satisfies DiscordModuleState;
-}
-
-export function normalizeDiscordState(state: Partial<DiscordModuleState>) {
-  if (Array.isArray(state.parts)) {
-    return normalizeStoryState(state);
-  }
-
-  return normalizeLegacyState(state);
-}
-
-export function getActiveStoryPart(state: DiscordModuleState) {
-  return (
-    state.parts.find((part) => part.id === state.activeStoryPartId) ??
-    state.parts[0] ??
-    createDefaultStoryPart()
-  );
-}
-
-export function patchDiscordWorkspace(state: DiscordModuleState, patch: DiscordStoryPartPatch, partId = state.activeStoryPartId) {
   return {
     ...state,
-    parts: state.parts.map((part) =>
-      part.id === partId
-        ? {
-            ...part,
-            ...patch,
-            label: patch.label?.trim() || part.label,
-            serverName: patch.serverName?.trim() || part.serverName,
-            channelName: patch.channelName?.trim() || part.channelName,
-            theme: patch.theme ?? part.theme,
-            inputTargetAccountId:
-              patch.inputTargetAccountId === undefined
-                ? part.inputTargetAccountId
-                : patch.inputTargetAccountId,
-            typingAccountId:
-              patch.typingAccountId === undefined
-                ? part.typingAccountId
-                : patch.typingAccountId,
-          }
-        : part,
+    theme: state.theme ?? "ash",
+    inputTargetAccountId:
+      state.inputTargetAccountId && hasInputTarget
+        ? state.inputTargetAccountId
+        : (normalizedAccounts[0]?.id ?? null),
+    typingAccountId:
+      state.typingAccountId && hasTypingAccount ? state.typingAccountId : null,
+    accounts: normalizedAccounts,
+    messages: reflowMessageTimestamps(
+      state.messages.map((message) => ({
+        id: message.id,
+        type: message.type,
+        authorId: message.authorId,
+        authorName: message.authorName,
+        roleColor: message.roleColor,
+        content: message.content,
+        timestamp: message.timestamp,
+        manualTimestamp: message.manualTimestamp,
+        attachments: (message.attachments ?? []).map((attachment) => {
+          const legacyAttachment = attachment as typeof attachment & {
+            base64?: string;
+          };
+
+          return {
+            id: attachment.id,
+            type: attachment.type,
+            name: attachment.name,
+            assetId: legacyAttachment.assetId ?? null,
+            base64: legacyAttachment.base64 ?? undefined,
+          };
+        }),
+      })),
     ),
+  };
+}
+
+export function patchDiscordWorkspace(
+  state: DiscordModuleState,
+  patch: DiscordWorkspacePatch,
+) {
+  return {
+    ...state,
+    ...patch,
   };
 }
 
@@ -329,18 +219,15 @@ export function updateDiscordAccount(
   return {
     ...state,
     accounts,
-    parts: state.parts.map((part) => ({
-      ...part,
-      messages: part.messages.map((message) =>
-        message.authorId === accountId
-          ? {
-              ...message,
-              authorName: updatedAccount.username,
-              roleColor: updatedAccount.roleColor,
-            }
-          : message,
-      ),
-    })),
+    messages: state.messages.map((message) =>
+      message.authorId === accountId
+        ? {
+            ...message,
+            authorName: updatedAccount.username,
+            roleColor: updatedAccount.roleColor,
+          }
+        : message,
+    ),
   };
 }
 
@@ -353,37 +240,24 @@ export function removeDiscordAccount(
   return {
     ...state,
     accounts,
-    parts: state.parts.map((part) => {
-      const messages = reflowMessageTimestamps(
-        part.messages.filter((message) => message.authorId !== accountId),
-      );
-
-      return {
-        ...part,
-        inputTargetAccountId:
-          part.inputTargetAccountId === accountId
-            ? (accounts[0]?.id ?? null)
-            : part.inputTargetAccountId,
-        typingAccountId:
-          part.typingAccountId === accountId ? null : part.typingAccountId,
-        messages,
-      };
-    }),
+    inputTargetAccountId:
+      state.inputTargetAccountId === accountId
+        ? (accounts[0]?.id ?? null)
+        : state.inputTargetAccountId,
+    typingAccountId:
+      state.typingAccountId === accountId ? null : state.typingAccountId,
+    messages: reflowMessageTimestamps(
+      state.messages.filter((message) => message.authorId !== accountId),
+    ),
   };
 }
 
 export function createDiscordMessage(
   state: DiscordModuleState,
   draft: DiscordMessageDraft,
-  partId = state.activeStoryPartId,
 ) {
   const author = getAccountSnapshot(state.accounts, draft.authorId);
   const manualTimestamp = draft.manualTimestamp ?? false;
-  const targetPart =
-    state.parts.find((part) => part.id === partId) ?? state.parts[0] ?? createDefaultStoryPart();
-  const previousTimestamp =
-    targetPart.messages[targetPart.messages.length - 1]?.timestamp ??
-    DEFAULT_START_TIMESTAMP;
 
   const message: DiscordMessage = {
     id: createId("message"),
@@ -392,21 +266,14 @@ export function createDiscordMessage(
     authorName: draft.type === "system" ? "System" : author.authorName,
     roleColor: draft.type === "system" ? "#b5bac1" : author.roleColor,
     content: draft.content,
-    timestamp: draft.timestamp ?? previousTimestamp,
+    timestamp: draft.timestamp ?? DEFAULT_START_TIMESTAMP,
     manualTimestamp,
     attachments: draft.attachments ?? [],
   };
 
   return {
     ...state,
-    parts: state.parts.map((part) =>
-      part.id === targetPart.id
-        ? {
-            ...part,
-            messages: reflowMessageTimestamps([...part.messages, message]),
-          }
-        : part,
-    ),
+    messages: reflowMessageTimestamps([...state.messages, message]),
   };
 }
 
@@ -414,65 +281,45 @@ export function updateDiscordMessage(
   state: DiscordModuleState,
   messageId: string,
   patch: DiscordMessagePatch,
-  partId = state.activeStoryPartId,
 ) {
-  const parts = state.parts.map((part) => {
-    if (partId && part.id !== partId) {
-      return part;
+  const messages = state.messages.map((message) => {
+    if (message.id !== messageId) {
+      return message;
     }
 
-    const messages = part.messages.map((message) => {
-      if (message.id !== messageId) {
-        return message;
-      }
-
-      const nextType = patch.type ?? message.type;
-      const nextAuthorId =
-        nextType === "system" ? null : (patch.authorId ?? message.authorId);
-      const author = getAccountSnapshot(state.accounts, nextAuthorId);
-
-      return {
-        ...message,
-        ...patch,
-        type: nextType,
-        authorId: nextType === "system" ? null : author.authorId,
-        authorName: nextType === "system" ? "System" : author.authorName,
-        roleColor: nextType === "system" ? "#b5bac1" : author.roleColor,
-        content: patch.content ?? message.content,
-        timestamp: patch.timestamp ?? message.timestamp,
-        manualTimestamp: patch.manualTimestamp ?? message.manualTimestamp,
-        attachments: patch.attachments ?? message.attachments,
-      };
-    });
+    const nextType = patch.type ?? message.type;
+    const nextAuthorId =
+      nextType === "system" ? null : (patch.authorId ?? message.authorId);
+    const author = getAccountSnapshot(state.accounts, nextAuthorId);
 
     return {
-      ...part,
-      messages: reflowMessageTimestamps(messages),
+      ...message,
+      ...patch,
+      type: nextType,
+      authorId: nextType === "system" ? null : author.authorId,
+      authorName: nextType === "system" ? "System" : author.authorName,
+      roleColor: nextType === "system" ? "#b5bac1" : author.roleColor,
+      content: patch.content ?? message.content,
+      timestamp: patch.timestamp ?? message.timestamp,
+      manualTimestamp: patch.manualTimestamp ?? message.manualTimestamp,
+      attachments: patch.attachments ?? message.attachments,
     };
   });
 
   return {
     ...state,
-    parts,
+    messages: reflowMessageTimestamps(messages),
   };
 }
 
 export function removeDiscordMessage(
   state: DiscordModuleState,
   messageId: string,
-  partId = state.activeStoryPartId,
 ) {
   return {
     ...state,
-    parts: state.parts.map((part) =>
-      partId && part.id !== partId
-        ? part
-        : {
-            ...part,
-            messages: reflowMessageTimestamps(
-              part.messages.filter((message) => message.id !== messageId),
-            ),
-          },
+    messages: reflowMessageTimestamps(
+      state.messages.filter((message) => message.id !== messageId),
     ),
   };
 }
@@ -481,38 +328,27 @@ export function moveDiscordMessage(
   state: DiscordModuleState,
   messageId: string,
   direction: "up" | "down",
-  partId = state.activeStoryPartId,
 ) {
+  const currentIndex = state.messages.findIndex(
+    (message) => message.id === messageId,
+  );
+
+  if (currentIndex === -1) {
+    return state;
+  }
+
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+  if (targetIndex < 0 || targetIndex >= state.messages.length) {
+    return state;
+  }
+
+  const messages = [...state.messages];
+  const [message] = messages.splice(currentIndex, 1);
+  messages.splice(targetIndex, 0, message);
+
   return {
     ...state,
-    parts: state.parts.map((part) => {
-      if (partId && part.id !== partId) {
-        return part;
-      }
-
-      const currentIndex = part.messages.findIndex(
-        (message) => message.id === messageId,
-      );
-
-      if (currentIndex === -1) {
-        return part;
-      }
-
-      const targetIndex =
-        direction === "up" ? currentIndex - 1 : currentIndex + 1;
-
-      if (targetIndex < 0 || targetIndex >= part.messages.length) {
-        return part;
-      }
-
-      const messages = [...part.messages];
-      const [message] = messages.splice(currentIndex, 1);
-      messages.splice(targetIndex, 0, message);
-
-      return {
-        ...part,
-        messages: reflowMessageTimestamps(messages),
-      };
-    }),
+    messages: reflowMessageTimestamps(messages),
   };
 }

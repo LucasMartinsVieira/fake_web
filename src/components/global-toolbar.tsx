@@ -62,17 +62,13 @@ export function GlobalToolbar() {
     useAppContext();
   const jsonInputRef = useRef<HTMLInputElement | null>(null);
   const [storyModalOpen, setStoryModalOpen] = useState(false);
-  const [storyScript, setStoryScript] = useState(`@story
-title: Fake Web Studio
+  const [storyScript, setStoryScript] = useState(`@workspace
+server: Fake Web Studio
+channel: general
 
 @accounts
 Lucas | #f2bd62
 Ava | #57f287
-
-@part
-label: Part 1
-server: Fake Web Studio
-channel: general
 
 @messages
 Lucas: We need a clean import format for stories.
@@ -182,9 +178,9 @@ SYSTEM: Ava joined the server.
                   Paste a story script
                 </h3>
                 <p className="mt-2 text-sm text-chrome-300">
-                  The parser supports one `@part` block per import, top-level
-                  `@accounts`, system messages, relative gaps like `+2m`, and
-                  exact case-sensitive section names.
+                  The parser supports workspace settings, optional account
+                  declarations, system messages, relative gaps like `+2m`, and
+                  explicit timestamps.
                 </p>
               </div>
               <button
@@ -212,15 +208,12 @@ SYSTEM: Ava joined the server.
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-chrome-300">
                 <p className="font-medium text-white">Supported format</p>
                 <div className="mt-3 space-y-2">
-                  <p>`@story` section:</p>
-                  <p>`title: My Story`</p>
+                  <p>`@workspace` section:</p>
+                  <p>`server: My Server`</p>
+                  <p>`channel: general`</p>
                   <p>`@accounts` section:</p>
                   <p>`Lucas | #f2bd62`</p>
                   <p>`Ava | #57f287`</p>
-                  <p>`@part` section, once per import:</p>
-                  <p>`label: Hook`</p>
-                  <p>`server: My Server`</p>
-                  <p>`channel: general`</p>
                   <p>`@messages` section:</p>
                   <p>`Lucas: plain message`</p>
                   <p>`+2m | Ava: relative delay`</p>
@@ -228,7 +221,6 @@ SYSTEM: Ava joined the server.
                   <p>`2026-04-04 14:30 | Lucas: explicit timestamp`</p>
                   <p>`Today 21:03 | Cassius: natural current-day timestamp`</p>
                   <p>`Yesterday 14:30 | Brutus: natural previous-day timestamp`</p>
-                  <p className="pt-2 text-xs text-chrome-500">Section names are case-sensitive.</p>
                 </div>
               </div>
             </div>

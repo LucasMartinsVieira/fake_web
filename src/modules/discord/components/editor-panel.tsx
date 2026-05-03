@@ -37,8 +37,7 @@ function applyMention(value: string, username: string) {
 }
 
 export function DiscordEditorPanel() {
-  const { assetUrls, activeStoryPart, discordState, discordActions } =
-    useAppContext();
+  const { assetUrls, discordState, discordActions } = useAppContext();
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
   const [accountsCollapsed, setAccountsCollapsed] = useState(true);
   const [messagesCollapsed, setMessagesCollapsed] = useState(true);
@@ -56,7 +55,7 @@ export function DiscordEditorPanel() {
     "user",
   );
   const [newMessageAuthorId, setNewMessageAuthorId] = useState(
-    activeStoryPart.inputTargetAccountId ?? discordState.accounts[0]?.id ?? "",
+    discordState.accounts[0]?.id ?? "",
   );
   const [newMessageContent, setNewMessageContent] = useState("");
   const [newMessageManualTimestamp, setNewMessageManualTimestamp] =
@@ -71,12 +70,6 @@ export function DiscordEditorPanel() {
       : discordState.accounts.filter((account) =>
           account.username.toLowerCase().startsWith(mentionQuery),
         );
-
-  useEffect(() => {
-    setNewMessageAuthorId(
-      activeStoryPart.inputTargetAccountId ?? discordState.accounts[0]?.id ?? "",
-    );
-  }, [activeStoryPart.id, activeStoryPart.inputTargetAccountId, discordState.accounts]);
 
   useEffect(() => {
     return () => {
@@ -108,7 +101,7 @@ export function DiscordEditorPanel() {
             <div className="flex-1">
               <h3 className="font-medium text-white">Workspace</h3>
               <p className="text-sm text-chrome-300">
-                Server, channel, and message state for active part.
+                Server and channel labels for the preview.
               </p>
             </div>
             {workspaceCollapsed ? (
@@ -126,7 +119,7 @@ export function DiscordEditorPanel() {
                 </span>
                 <input
                   type="text"
-                  value={activeStoryPart.serverName}
+                  value={discordState.serverName}
                   onChange={(event) =>
                     discordActions.updateWorkspace({
                       serverName: event.target.value,
@@ -142,7 +135,7 @@ export function DiscordEditorPanel() {
                 </span>
                 <input
                   type="text"
-                  value={activeStoryPart.channelName}
+                  value={discordState.channelName}
                   onChange={(event) =>
                     discordActions.updateWorkspace({
                       channelName: event.target.value,
@@ -157,7 +150,7 @@ export function DiscordEditorPanel() {
                   Theme
                 </span>
                 <select
-                  value={activeStoryPart.theme}
+                  value={discordState.theme}
                   onChange={(event) =>
                     discordActions.updateWorkspace({
                       theme: event.target.value as "ash" | "dark",
@@ -175,7 +168,7 @@ export function DiscordEditorPanel() {
                   Chat input target
                 </span>
                 <select
-                  value={activeStoryPart.inputTargetAccountId ?? ""}
+                  value={discordState.inputTargetAccountId ?? ""}
                   onChange={(event) =>
                     discordActions.updateWorkspace({
                       inputTargetAccountId: event.target.value || null,
@@ -196,7 +189,7 @@ export function DiscordEditorPanel() {
                   Typing indicator
                 </span>
                 <select
-                  value={activeStoryPart.typingAccountId ?? ""}
+                  value={discordState.typingAccountId ?? ""}
                   onChange={(event) =>
                     discordActions.updateWorkspace({
                       typingAccountId: event.target.value || null,
@@ -228,7 +221,7 @@ export function DiscordEditorPanel() {
             <div className="flex-1">
               <h3 className="font-medium text-white">Accounts</h3>
               <p className="text-sm text-chrome-300">
-                Create and edit Discord identities for whole story.
+                Create and edit Discord identities.
               </p>
             </div>
             {accountsCollapsed ? (
@@ -666,14 +659,9 @@ export function DiscordEditorPanel() {
                           ? fromDateTimeLocalValue(newMessageTimestamp)
                           : undefined,
                       });
-                        setNewMessageContent("");
-                        setNewMessageManualTimestamp(false);
-                        setNewMessageAuthorId(
-                          activeStoryPart.inputTargetAccountId ??
-                            discordState.accounts[0]?.id ??
-                            "",
-                        );
-                      }}
+                      setNewMessageContent("");
+                      setNewMessageManualTimestamp(false);
+                    }}
                     className="inline-flex items-center justify-center gap-2 rounded-xl border border-discord-accent bg-discord-accent px-3 py-2 text-sm text-white transition hover:brightness-110"
                   >
                     <Plus className="h-4 w-4" />

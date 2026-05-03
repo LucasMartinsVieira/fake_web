@@ -7,5 +7,5 @@ export type {
   DiscordMessagePatch,
   DiscordMessageType,
   DiscordModuleState,
-  DiscordStoryPartPatch,
+  DiscordWorkspacePatch,
 } from "@/modules/discord/state/discord-types";
