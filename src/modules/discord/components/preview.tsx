@@ -14,7 +14,7 @@ import { useAppContext } from "@/state/app-context";
 import type { DiscordAccount, DiscordMessage, DiscordUserStatus } from "@/modules/discord/state/discord-types";
 import { formatDiscordTimestamp } from "@/modules/discord/utils/format-discord-timestamp";
 import { getAvatarColor } from "@/modules/discord/utils/get-avatar-color";
-import { calculateStoryDuration, formatDurationRange } from "@/modules/discord/utils/calculate-story-duration";
+import { calculateStoryDuration, formatDurationEstimate } from "@/modules/discord/utils/calculate-story-duration";
 
 const discordThemes = {
   ash: {
@@ -324,14 +324,14 @@ export function DiscordPreview() {
           </div>
 
           <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-chrome-300">
-            <div className="rounded-xl bg-black/20 px-3 py-2 text-white">Current part: {formatDurationRange(activeDuration.withSystem.minSeconds, activeDuration.withSystem.maxSeconds)} with SYSTEM / {formatDurationRange(activeDuration.withoutSystem.minSeconds, activeDuration.withoutSystem.maxSeconds)} without SYSTEM</div>
-            <div className="rounded-xl bg-black/20 px-3 py-2 text-white">Whole story: {formatDurationRange(durationSummary.total.withSystem.minSeconds, durationSummary.total.withSystem.maxSeconds)} with SYSTEM / {formatDurationRange(durationSummary.total.withoutSystem.minSeconds, durationSummary.total.withoutSystem.maxSeconds)} without SYSTEM</div>
+            <div className="rounded-xl bg-black/20 px-3 py-2 text-white">Current part: {formatDurationEstimate(activeDuration.withSystem.minSeconds, activeDuration.withSystem.expectedSeconds, activeDuration.withSystem.maxSeconds)} with SYSTEM / {formatDurationEstimate(activeDuration.withoutSystem.minSeconds, activeDuration.withoutSystem.expectedSeconds, activeDuration.withoutSystem.maxSeconds)} without SYSTEM</div>
+            <div className="rounded-xl bg-black/20 px-3 py-2 text-white">Whole story: {formatDurationEstimate(durationSummary.total.withSystem.minSeconds, durationSummary.total.withSystem.expectedSeconds, durationSummary.total.withSystem.maxSeconds)} with SYSTEM / {formatDurationEstimate(durationSummary.total.withoutSystem.minSeconds, durationSummary.total.withoutSystem.expectedSeconds, durationSummary.total.withoutSystem.maxSeconds)} without SYSTEM</div>
           </div>
 
           <div className="flex flex-wrap gap-2">
             {durationSummary.parts.map((entry, index) => (
               <button key={entry.part.id} type="button" onClick={() => setActiveStoryPart(entry.part.id)} className={`rounded-full border px-3 py-1.5 text-sm transition ${entry.part.id === activeStoryPart.id ? "border-discord-accent bg-discord-accent text-white" : "border-white/10 bg-white/5 text-chrome-300 hover:border-white/20 hover:bg-white/10 hover:text-white"}`}>
-                {index + 1}. {entry.part.label} · {formatDurationRange(entry.estimate.withSystem.minSeconds, entry.estimate.withSystem.maxSeconds)}
+                {index + 1}. {entry.part.label} · {formatDurationEstimate(entry.estimate.withSystem.minSeconds, entry.estimate.withSystem.expectedSeconds, entry.estimate.withSystem.maxSeconds)}
               </button>
             ))}
           </div>

@@ -182,9 +182,9 @@ SYSTEM: Ava joined the server.
                   Paste a story script
                 </h3>
                 <p className="mt-2 text-sm text-chrome-300">
-                  The parser supports top-level `@accounts`, repeated `@part`
-                  blocks, system messages, relative gaps like `+2m`, and exact
-                  case-sensitive section names.
+                  The parser supports one `@part` block per import, top-level
+                  `@accounts`, system messages, relative gaps like `+2m`, and
+                  exact case-sensitive section names.
                 </p>
               </div>
               <button
@@ -217,7 +217,7 @@ SYSTEM: Ava joined the server.
                   <p>`@accounts` section:</p>
                   <p>`Lucas | #f2bd62`</p>
                   <p>`Ava | #57f287`</p>
-                  <p>`@part` section:</p>
+                  <p>`@part` section, once per import:</p>
                   <p>`label: Hook`</p>
                   <p>`server: My Server`</p>
                   <p>`channel: general`</p>

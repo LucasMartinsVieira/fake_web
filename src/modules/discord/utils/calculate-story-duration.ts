@@ -9,10 +9,12 @@ export interface StoryDurationEstimate {
   userMessageCount: number;
   withSystem: {
     minSeconds: number;
+    expectedSeconds: number;
     maxSeconds: number;
   };
   withoutSystem: {
     minSeconds: number;
+    expectedSeconds: number;
     maxSeconds: number;
   };
 }
@@ -30,11 +32,13 @@ function estimate(messages: DiscordMessage[]): StoryDurationEstimate {
     messageCount,
     userMessageCount,
     withSystem: {
-      minSeconds: messageCount * 2,
+      minSeconds: messageCount,
+      expectedSeconds: messageCount * 3,
       maxSeconds: messageCount * 5,
     },
     withoutSystem: {
-      minSeconds: userMessageCount * 2,
+      minSeconds: userMessageCount,
+      expectedSeconds: userMessageCount * 3,
       maxSeconds: userMessageCount * 5,
     },
   };
@@ -54,21 +58,29 @@ export function calculateStoryDuration(state: DiscordModuleState): StoryDuration
   };
 }
 
-export function formatDurationRange(minSeconds: number, maxSeconds: number) {
-  function formatOne(value: number) {
-    const minutes = Math.floor(value / 60);
-    const seconds = value % 60;
+function formatSeconds(value: number) {
+  const minutes = Math.floor(value / 60);
+  const seconds = value % 60;
 
-    if (!minutes) {
-      return `${seconds}s`;
-    }
-
-    if (!seconds) {
-      return `${minutes}m`;
-    }
-
-    return `${minutes}m ${seconds}s`;
+  if (!minutes) {
+    return `${seconds}s`;
   }
 
-  return `${formatOne(minSeconds)}-${formatOne(maxSeconds)}`;
+  if (!seconds) {
+    return `${minutes}m`;
+  }
+
+  return `${minutes}m ${seconds}s`;
+}
+
+export function formatDurationRange(minSeconds: number, maxSeconds: number) {
+  return `${formatSeconds(minSeconds)}-${formatSeconds(maxSeconds)}`;
+}
+
+export function formatDurationEstimate(
+  minSeconds: number,
+  expectedSeconds: number,
+  maxSeconds: number,
+) {
+  return `${formatSeconds(minSeconds)} / ${formatSeconds(expectedSeconds)} / ${formatSeconds(maxSeconds)}`;
 }

@@ -261,6 +261,12 @@ function parseStrictStoryScript(raw: string): DiscordModuleState {
     }
 
     if (line === "@part") {
+      if (parts.length > 0) {
+        throw new Error(
+          "Import one story part at a time. Remove the extra @part sections and import each act separately.",
+        );
+      }
+
       finalizePart(currentPart, accounts, parts);
       currentPart = {
         id: createId("part"),
