@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import {
   Fragment,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,7 +13,12 @@ import {
   memo,
 } from "react";
 import { ArrowDown, ArrowUp, Gift, Pencil, Plus, X } from "lucide-react";
-import { useAppContext } from "@/state/app-context";
+import {
+  useAppActions,
+  useAppUi,
+  useAssetUrls,
+  useDiscordContext,
+} from "@/state/app-context";
 import type { DiscordAccount, DiscordMessage, DiscordUserStatus } from "@/modules/discord/state/discord-types";
 import { formatDiscordTimestamp } from "@/modules/discord/utils/format-discord-timestamp";
 import { getAvatarColor } from "@/modules/discord/utils/get-avatar-color";
@@ -61,6 +67,40 @@ function shouldGroupMessages(previousMessage: DiscordMessage | undefined, messag
   const previousTime = new Date(previousMessage.timestamp).getTime();
   const currentTime = new Date(message.timestamp).getTime();
   return (currentTime - previousTime) / 60000 < 8;
+}
+
+function estimateMessageHeight(message: DiscordMessage, isGrouped: boolean) {
+  const lineCount = Math.max(
+    1,
+    message.content.split("\n").reduce((count, line) => {
+      const wrappedLines = Math.max(1, Math.ceil(line.length / 48));
+      return count + wrappedLines;
+    }, 0),
+  );
+  const attachmentHeight = message.attachments.length ? 240 : 0;
+
+  if (message.type === "system") {
+    return 44 + lineCount * 18;
+  }
+
+  return (isGrouped ? 18 : 58) + lineCount * 22 + attachmentHeight;
+}
+
+function findVisibleIndex(offsets: number[], value: number) {
+  let low = 0;
+  let high = offsets.length - 1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+
+    if (offsets[mid] <= value) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return Math.max(0, low - 1);
 }
 
 function renderDiscordMarkdown(content: string, mentionColor: string) {
@@ -276,6 +316,215 @@ const UserMessageRow = memo(function UserMessageRow({
   previous.mentionColor === next.mentionColor,
 );
 
+interface VirtualMessageListProps {
+  accountById: Map<string, DiscordAccount>;
+  assetUrls: Record<string, string>;
+  messages: DiscordMessage[];
+  mentionColor: string;
+  onEdit: (message: DiscordMessage) => void;
+  onMove: (messageId: string, direction: "up" | "down") => void;
+}
+
+function VirtualMessageList({
+  accountById,
+  assetUrls,
+  messages,
+  mentionColor,
+  onEdit,
+  onMove,
+}: VirtualMessageListProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [measuredHeights, setMeasuredHeights] = useState<Record<string, number>>({});
+
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const syncSize = () => {
+      setViewportHeight(element.clientHeight);
+      setScrollTop(element.scrollTop);
+    };
+
+    syncSize();
+
+    const resizeObserver = new ResizeObserver(syncSize);
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    setMeasuredHeights((current) => {
+      const nextEntries = Object.entries(current).filter(([messageId]) =>
+        messages.some((message) => message.id === messageId),
+      );
+
+      if (nextEntries.length === Object.keys(current).length) {
+        return current;
+      }
+
+      return Object.fromEntries(nextEntries);
+    });
+  }, [messages]);
+
+  const items = useMemo(() => {
+    let offsetTop = 0;
+
+    return messages.map((message, index) => {
+      const previousMessage = messages[index - 1];
+      const isGrouped = shouldGroupMessages(previousMessage, message);
+      const estimatedHeight = estimateMessageHeight(message, isGrouped);
+      const height = measuredHeights[message.id] ?? estimatedHeight;
+      const item = {
+        authorAccount: message.authorId ? accountById.get(message.authorId) : undefined,
+        canMoveDown: index < messages.length - 1,
+        canMoveUp: index > 0,
+        height,
+        id: message.id,
+        isGrouped,
+        message,
+        offsetTop,
+      };
+
+      offsetTop += height;
+      return item;
+    });
+  }, [accountById, measuredHeights, messages]);
+
+  const totalHeight = items[items.length - 1]
+    ? items[items.length - 1].offsetTop + items[items.length - 1].height
+    : 0;
+  const offsets = useMemo(() => items.map((item) => item.offsetTop), [items]);
+  const overscan = 600;
+  const startIndex = items.length
+    ? findVisibleIndex(offsets, Math.max(0, scrollTop - overscan))
+    : 0;
+  const endIndex = items.length
+    ? Math.min(
+        items.length - 1,
+        findVisibleIndex(
+          offsets,
+          Math.max(0, scrollTop + viewportHeight + overscan),
+        ),
+      )
+    : 0;
+  const visibleItems = items.slice(startIndex, endIndex + 1);
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex-1 overflow-y-auto px-6 pt-6"
+      onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+    >
+      <div className="relative pr-2" style={{ height: totalHeight || undefined }}>
+        {visibleItems.map((item) => (
+          <MeasuredMessageRow
+            key={item.id}
+            assetUrls={assetUrls}
+            authorAccount={item.authorAccount}
+            canMoveDown={item.canMoveDown}
+            canMoveUp={item.canMoveUp}
+            isGrouped={item.isGrouped}
+            mentionColor={mentionColor}
+            message={item.message}
+            offsetTop={item.offsetTop}
+            onEdit={onEdit}
+            onHeightChange={(height) =>
+              setMeasuredHeights((current) =>
+                current[item.id] === height ? current : { ...current, [item.id]: height },
+              )
+            }
+            onMove={onMove}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MeasuredMessageRow({
+  assetUrls,
+  authorAccount,
+  canMoveDown,
+  canMoveUp,
+  isGrouped,
+  mentionColor,
+  message,
+  offsetTop,
+  onEdit,
+  onHeightChange,
+  onMove,
+}: BaseMessageRowProps & {
+  assetUrls: Record<string, string>;
+  authorAccount?: DiscordAccount;
+  isGrouped: boolean;
+  mentionColor: string;
+  message: DiscordMessage;
+  offsetTop: number;
+  onHeightChange: (height: number) => void;
+}) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    const element = rowRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const measure = () => {
+      onHeightChange(element.getBoundingClientRect().height);
+    };
+
+    measure();
+
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [message, onHeightChange]);
+
+  return (
+    <div
+      ref={rowRef}
+      className="absolute left-0 right-0"
+      style={{ top: offsetTop }}
+    >
+      {message.type === "system" ? (
+        <SystemMessageRow
+          canMoveDown={canMoveDown}
+          canMoveUp={canMoveUp}
+          mentionColor={mentionColor}
+          message={message}
+          onEdit={onEdit}
+          onMove={onMove}
+        />
+      ) : (
+        <UserMessageRow
+          assetUrls={assetUrls}
+          authorAccount={authorAccount}
+          canMoveDown={canMoveDown}
+          canMoveUp={canMoveUp}
+          isGrouped={isGrouped}
+          mentionColor={mentionColor}
+          message={message}
+          onEdit={onEdit}
+          onMove={onMove}
+        />
+      )}
+    </div>
+  );
+}
+
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-0.5">
@@ -366,7 +615,10 @@ function MemberList({ accounts, assetUrls, statusBg, isFullWidth = false }: { ac
 }
 
 export function DiscordPreview() {
-  const { assetUrls, canvasScale, discordState, discordActions, activeStoryPart, setActiveStoryPart } = useAppContext();
+  const assetUrls = useAssetUrls();
+  const { canvasScale } = useAppUi();
+  const { activeStoryPart, discordState, setActiveStoryPart } = useDiscordContext();
+  const { discordActions } = useAppActions();
   const zoomStyle = { zoom: canvasScale } as CSSProperties;
   const theme = discordThemes[activeStoryPart.theme];
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -466,46 +718,14 @@ export function DiscordPreview() {
                     <p className="text-sm text-discord-muted">{activeStoryPart.serverName} · {activeStoryPart.label}</p>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto px-6 pt-6">
-                    <div className="pr-2">
-                      {activeMessages.map((message, index) => {
-                        const authorAccount = message.authorId ? accountById.get(message.authorId) : undefined;
-                        const previousMessage = activeMessages[index - 1];
-                        const isGrouped = shouldGroupMessages(previousMessage, message);
-                        const canMoveUp = index > 0;
-                        const canMoveDown = index < activeMessages.length - 1;
-
-                        if (message.type === "system") {
-                          return (
-                            <SystemMessageRow
-                              key={message.id}
-                              canMoveDown={canMoveDown}
-                              canMoveUp={canMoveUp}
-                              mentionColor={theme.mention}
-                              message={message}
-                              onEdit={openMessageEditor}
-                              onMove={discordActions.moveMessage}
-                            />
-                          );
-                        }
-
-                        return (
-                          <UserMessageRow
-                            key={message.id}
-                            assetUrls={assetUrls}
-                            authorAccount={authorAccount}
-                            canMoveDown={canMoveDown}
-                            canMoveUp={canMoveUp}
-                            isGrouped={isGrouped}
-                            mentionColor={theme.mention}
-                            message={message}
-                            onEdit={openMessageEditor}
-                            onMove={discordActions.moveMessage}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <VirtualMessageList
+                    accountById={accountById}
+                    assetUrls={assetUrls}
+                    mentionColor={theme.mention}
+                    messages={activeMessages}
+                    onEdit={openMessageEditor}
+                    onMove={discordActions.moveMessage}
+                  />
                 </div>
               ) : previewView === "input" ? (
                 <div className="min-h-[360px] p-6">

@@ -10,7 +10,11 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { useAppContext } from "@/state/app-context";
+import {
+  useAppActions,
+  useAssetUrls,
+  useDiscordContext,
+} from "@/state/app-context";
 import { saveAssetFile } from "@/state/asset-storage";
 import type { DiscordUserStatus } from "@/modules/discord/state/discord-types";
 
@@ -37,8 +41,9 @@ function applyMention(value: string, username: string) {
 }
 
 export function DiscordEditorPanel() {
-  const { assetUrls, activeStoryPart, discordState, discordActions } =
-    useAppContext();
+  const assetUrls = useAssetUrls();
+  const { activeStoryPart, discordState } = useDiscordContext();
+  const { discordActions } = useAppActions();
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
   const [accountsCollapsed, setAccountsCollapsed] = useState(true);
   const [messagesCollapsed, setMessagesCollapsed] = useState(true);
