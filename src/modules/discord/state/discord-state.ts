@@ -95,13 +95,10 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
         return message;
       }
 
-      const nextTimestamp = message.timestamp || DEFAULT_START_TIMESTAMP;
-      return message.timestamp === nextTimestamp
-        ? message
-        : {
-            ...message,
-            timestamp: nextTimestamp,
-          };
+      return {
+        ...message,
+        timestamp: message.timestamp || DEFAULT_START_TIMESTAMP,
+      };
     }
 
     if (message.manualTimestamp) {
@@ -112,17 +109,13 @@ function reflowMessageTimestamps(messages: DiscordMessage[]) {
     const previousTimestamp =
       previousMessage?.timestamp || DEFAULT_START_TIMESTAMP;
 
-    const nextTimestamp = generateNextTimestamp(
-      previousTimestamp,
-      getAutoGapMinutes(previousMessage, message),
-    );
-
-    return message.timestamp === nextTimestamp
-      ? message
-      : {
-          ...message,
-          timestamp: nextTimestamp,
-        };
+    return {
+      ...message,
+      timestamp: generateNextTimestamp(
+        previousTimestamp,
+        getAutoGapMinutes(previousMessage, message),
+      ),
+    };
   });
 }
 

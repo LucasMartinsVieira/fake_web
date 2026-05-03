@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  startTransition,
   createContext,
   useContext,
   useEffect,
@@ -127,25 +126,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    const persist = () => {
-      storeAppState(state);
-    };
-    let idleId: number | null = null;
     const timeoutId = window.setTimeout(() => {
-      if ("requestIdleCallback" in window) {
-        idleId = window.requestIdleCallback(persist, { timeout: 1000 });
-        return;
-      }
+      storeAppState(state);
+    }, 200);
 
-      persist();
-    }, 500);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      if (idleId !== null && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleId);
-      }
-    };
+    return () => window.clearTimeout(timeoutId);
   }, [state]);
 
   useEffect(() => {
@@ -325,23 +310,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     exportState: () => serializeAppState(state),
     importState: (raw) => {
       const imported = parseImportedAppState(raw);
-      startTransition(() => {
-        setState({
-          ...initialState,
-          ...imported,
-          discordState: normalizeDiscordState(imported.discordState),
-        });
+      setState({
+        ...initialState,
+        ...imported,
+        discordState: normalizeDiscordState(imported.discordState),
       });
     },
     importStory: (raw) => {
       const discordState = normalizeDiscordState(parseStoryScript(raw));
-      startTransition(() => {
-        setState((current) => ({
-          ...current,
-          activeModule: "discord",
-          discordState,
-        }));
-      });
+      setState((current) => ({
+        ...current,
+        activeModule: "discord",
+        discordState,
+      }));
     },
     discordActions: {
       updateWorkspace: (patch) =>

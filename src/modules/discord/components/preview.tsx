@@ -4,12 +4,10 @@ import { createPortal } from "react-dom";
 import {
   Fragment,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
   type ReactNode,
-  memo,
 } from "react";
 import { ArrowDown, ArrowUp, Gift, Pencil, Plus, X } from "lucide-react";
 import { useAppContext } from "@/state/app-context";
@@ -157,13 +155,9 @@ function MessageAvatar({ avatarUrl, authorName, status, statusBg }: { avatarUrl:
   );
 }
 
-function MessageAttachments({
-  message,
-  assetUrls,
-}: {
-  message: DiscordMessage;
-  assetUrls: Record<string, string>;
-}) {
+function MessageAttachments({ message }: { message: DiscordMessage }) {
+  const { assetUrls } = useAppContext();
+
   if (!message.attachments.length) return null;
 
   return (
@@ -179,102 +173,6 @@ function MessageAttachments({
     </div>
   );
 }
-
-interface BaseMessageRowProps {
-  canMoveDown: boolean;
-  canMoveUp: boolean;
-  onEdit: (message: DiscordMessage) => void;
-  onMove: (messageId: string, direction: "up" | "down") => void;
-}
-
-const SystemMessageRow = memo(function SystemMessageRow({
-  canMoveDown,
-  canMoveUp,
-  mentionColor,
-  message,
-  onEdit,
-  onMove,
-}: BaseMessageRowProps & {
-  mentionColor: string;
-  message: DiscordMessage;
-}) {
-  return (
-    <article className="group relative mt-4 rounded-xl px-4 py-2 first:mt-0">
-      <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
-        <button type="button" onClick={() => onMove(message.id, "up")} disabled={!canMoveUp} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button>
-        <button type="button" onClick={() => onMove(message.id, "down")} disabled={!canMoveDown} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowDown className="h-3.5 w-3.5" /></button>
-        <button type="button" onClick={() => onEdit(message)} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"><Pencil className="h-3.5 w-3.5" /></button>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/5" />
-        <p className="text-center text-xs font-medium text-discord-muted">{renderDiscordMarkdown(message.content, mentionColor)}</p>
-        <div className="h-px flex-1 bg-white/5" />
-      </div>
-    </article>
-  );
-}, (previous, next) =>
-  previous.message === next.message &&
-  previous.canMoveDown === next.canMoveDown &&
-  previous.canMoveUp === next.canMoveUp &&
-  previous.mentionColor === next.mentionColor,
-);
-
-const UserMessageRow = memo(function UserMessageRow({
-  assetUrls,
-  authorAccount,
-  canMoveDown,
-  canMoveUp,
-  isGrouped,
-  mentionColor,
-  message,
-  onEdit,
-  onMove,
-}: BaseMessageRowProps & {
-  assetUrls: Record<string, string>;
-  authorAccount?: DiscordAccount;
-  isGrouped: boolean;
-  mentionColor: string;
-  message: DiscordMessage;
-}) {
-  return (
-    <article className={`group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${isGrouped ? "py-[1px]" : "mt-4 pb-0.5 pt-1 first:mt-0"}`}>
-      <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
-        <button type="button" onClick={() => onMove(message.id, "up")} disabled={!canMoveUp} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button>
-        <button type="button" onClick={() => onMove(message.id, "down")} disabled={!canMoveDown} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowDown className="h-3.5 w-3.5" /></button>
-        <button type="button" onClick={() => onEdit(message)} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"><Pencil className="h-3.5 w-3.5" /></button>
-      </div>
-      {!isGrouped ? (
-        <>
-          <MessageAvatar avatarUrl={authorAccount?.avatarAssetId ? (assetUrls[authorAccount.avatarAssetId] ?? null) : null} authorName={message.authorName} />
-          <div className="min-w-0">
-            <div className="flex items-baseline gap-2">
-              <span className="font-medium" style={{ color: message.roleColor }}>{message.authorName}</span>
-              <span className="text-xs text-discord-muted">{formatDiscordTimestamp(message.timestamp)}</span>
-            </div>
-            <div className="mt-0.5 whitespace-pre-wrap break-words text-discord-text">{renderDiscordMarkdown(message.content, mentionColor)}</div>
-            <MessageAttachments message={message} assetUrls={assetUrls} />
-          </div>
-        </>
-      ) : (
-        <>
-          <div aria-hidden="true" />
-          <div className="min-w-0">
-            <div className="whitespace-pre-wrap break-words text-discord-text">{renderDiscordMarkdown(message.content, mentionColor)}</div>
-            <MessageAttachments message={message} assetUrls={assetUrls} />
-          </div>
-        </>
-      )}
-    </article>
-  );
-}, (previous, next) =>
-  previous.message === next.message &&
-  previous.authorAccount === next.authorAccount &&
-  previous.assetUrls === next.assetUrls &&
-  previous.canMoveDown === next.canMoveDown &&
-  previous.canMoveUp === next.canMoveUp &&
-  previous.isGrouped === next.isGrouped &&
-  previous.mentionColor === next.mentionColor,
-);
 
 function TypingDots() {
   return (
@@ -385,14 +283,7 @@ export function DiscordPreview() {
   const editingMentionSuggestions = editingMentionQuery === null ? [] : discordState.accounts.filter((account) => account.username.toLowerCase().startsWith(editingMentionQuery));
   const inputTargetAccount = discordState.accounts.find((account) => account.id === activeStoryPart.inputTargetAccountId) ?? null;
   const typingAccount = discordState.accounts.find((account) => account.id === activeStoryPart.typingAccountId) ?? null;
-  const accountById = useMemo(
-    () => new Map(discordState.accounts.map((account) => [account.id, account])),
-    [discordState.accounts],
-  );
-  const durationSummary = useMemo(
-    () => calculateStoryDuration(discordState),
-    [discordState],
-  );
+  const durationSummary = calculateStoryDuration(discordState);
   const activeDuration = durationSummary.parts.find((entry) => entry.part.id === activeStoryPart.id)?.estimate ?? durationSummary.total;
 
   useEffect(() => {
@@ -469,7 +360,7 @@ export function DiscordPreview() {
                   <div className="flex-1 overflow-y-auto px-6 pt-6">
                     <div className="pr-2">
                       {activeMessages.map((message, index) => {
-                        const authorAccount = message.authorId ? accountById.get(message.authorId) : undefined;
+                        const authorAccount = discordState.accounts.find((account) => account.id === message.authorId);
                         const previousMessage = activeMessages[index - 1];
                         const isGrouped = shouldGroupMessages(previousMessage, message);
                         const canMoveUp = index > 0;
@@ -477,31 +368,50 @@ export function DiscordPreview() {
 
                         if (message.type === "system") {
                           return (
-                            <SystemMessageRow
-                              key={message.id}
-                              canMoveDown={canMoveDown}
-                              canMoveUp={canMoveUp}
-                              mentionColor={theme.mention}
-                              message={message}
-                              onEdit={openMessageEditor}
-                              onMove={discordActions.moveMessage}
-                            />
+                            <article key={message.id} className="group relative mt-4 rounded-xl px-4 py-2 first:mt-0">
+                              <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                                <button type="button" onClick={() => discordActions.moveMessage(message.id, "up")} disabled={!canMoveUp} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button>
+                                <button type="button" onClick={() => discordActions.moveMessage(message.id, "down")} disabled={!canMoveDown} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowDown className="h-3.5 w-3.5" /></button>
+                                <button type="button" onClick={() => openMessageEditor(message)} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"><Pencil className="h-3.5 w-3.5" /></button>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="h-px flex-1 bg-white/5" />
+                                <p className="text-center text-xs font-medium text-discord-muted">{renderDiscordMarkdown(message.content, theme.mention)}</p>
+                                <div className="h-px flex-1 bg-white/5" />
+                              </div>
+                            </article>
                           );
                         }
 
                         return (
-                          <UserMessageRow
-                            key={message.id}
-                            assetUrls={assetUrls}
-                            authorAccount={authorAccount}
-                            canMoveDown={canMoveDown}
-                            canMoveUp={canMoveUp}
-                            isGrouped={isGrouped}
-                            mentionColor={theme.mention}
-                            message={message}
-                            onEdit={openMessageEditor}
-                            onMove={discordActions.moveMessage}
-                          />
+                          <article key={message.id} className={`group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${isGrouped ? "py-[1px]" : "mt-4 pb-0.5 pt-1 first:mt-0"}`}>
+                            <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                              <button type="button" onClick={() => discordActions.moveMessage(message.id, "up")} disabled={!canMoveUp} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button>
+                              <button type="button" onClick={() => discordActions.moveMessage(message.id, "down")} disabled={!canMoveDown} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"><ArrowDown className="h-3.5 w-3.5" /></button>
+                              <button type="button" onClick={() => openMessageEditor(message)} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-chrome-950/95 text-chrome-300 transition hover:border-white/20 hover:text-white"><Pencil className="h-3.5 w-3.5" /></button>
+                            </div>
+                            {!isGrouped ? (
+                              <>
+                                <MessageAvatar avatarUrl={authorAccount?.avatarAssetId ? (assetUrls[authorAccount.avatarAssetId] ?? null) : null} authorName={message.authorName} />
+                                <div className="min-w-0">
+                                  <div className="flex items-baseline gap-2">
+                                    <span className="font-medium" style={{ color: message.roleColor }}>{message.authorName}</span>
+                                    <span className="text-xs text-discord-muted">{formatDiscordTimestamp(message.timestamp)}</span>
+                                  </div>
+                                  <div className="mt-0.5 whitespace-pre-wrap break-words text-discord-text">{renderDiscordMarkdown(message.content, theme.mention)}</div>
+                                  <MessageAttachments message={message} />
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div aria-hidden="true" />
+                                <div className="min-w-0">
+                                  <div className="whitespace-pre-wrap break-words text-discord-text">{renderDiscordMarkdown(message.content, theme.mention)}</div>
+                                  <MessageAttachments message={message} />
+                                </div>
+                              </>
+                            )}
+                          </article>
                         );
                       })}
                     </div>
