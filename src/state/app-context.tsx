@@ -1,9 +1,8 @@
 "use client";
 
 import {
-  createContext,
   startTransition,
-  useCallback,
+  createContext,
   useContext,
   useEffect,
   useMemo,
@@ -41,12 +40,12 @@ import {
   parseImportedAppState,
   serializeAppState,
 } from "@/state/import-export";
+import { loadStoredAppState, storeAppState } from "@/state/storage";
 import {
   loadAssetBlob,
   saveAssetDataUrl,
   syncStoredAssets,
 } from "@/state/asset-storage";
-import { loadStoredAppState, storeAppState } from "@/state/storage";
 
 interface DiscordActionSet {
   updateWorkspace: (patch: DiscordStoryPartPatch) => void;
@@ -62,20 +61,12 @@ interface DiscordActionSet {
   moveMessage: (messageId: string, direction: "up" | "down") => void;
 }
 
-interface AppUiContextValue {
-  activeModule: ModuleId;
-  canvasScale: number;
-  setActiveModule: (moduleId: ModuleId) => void;
-  setCanvasScale: (value: number) => void;
-}
-
-interface DiscordContextValue {
-  discordState: AppState["discordState"];
+interface AppContextValue extends AppState {
+  assetUrls: Record<string, string>;
   activeStoryPart: DiscordStoryPart;
+  setActiveModule: (moduleId: ModuleId) => void;
   setActiveStoryPart: (partId: string) => void;
-}
-
-interface AppActionsContextValue {
+  setCanvasScale: (value: number) => void;
   exportState: () => string;
   importState: (raw: string) => void;
   importStory: (raw: string) => void;
@@ -84,10 +75,7 @@ interface AppActionsContextValue {
 
 const initialState: AppState = initialStateSnapshot;
 
-const AppUiContext = createContext<AppUiContextValue | null>(null);
-const DiscordContext = createContext<DiscordContextValue | null>(null);
-const AssetUrlsContext = createContext<Record<string, string> | null>(null);
-const AppActionsContext = createContext<AppActionsContextValue | null>(null);
+const AppContext = createContext<AppContextValue | null>(null);
 
 function collectReferencedAssetIds(state: AppState) {
   return Array.from(
@@ -128,7 +116,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
-  const stateRef = useRef(state);
   const assetUrlsRef = useRef<Record<string, string>>({});
   const referencedAssetIds = useMemo(
     () => collectReferencedAssetIds(state),
@@ -138,10 +125,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => getActiveStoryPart(state.discordState),
     [state.discordState],
   );
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   useEffect(() => {
     const persist = () => {
@@ -226,35 +209,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })),
       );
 
-      const hasAccountChanges =
-        nextAccounts.some(
-          (account, index) =>
-            account.avatarAssetId !==
-            state.discordState.accounts[index]?.avatarAssetId,
-        ) ||
-        state.discordState.accounts.some((account) => {
-          const legacyAvatarBase64 = (
-            account as typeof account & { avatarBase64?: string | null }
-          ).avatarBase64;
+      const hasAccountChanges = nextAccounts.some(
+        (account, index) =>
+          account.avatarAssetId !== state.discordState.accounts[index]?.avatarAssetId,
+      ) || state.discordState.accounts.some((account) => {
+        const legacyAvatarBase64 = (
+          account as typeof account & { avatarBase64?: string | null }
+        ).avatarBase64;
 
-          return Boolean(legacyAvatarBase64);
-        });
-      const hasAttachmentChanges =
-        nextParts.some((part, partIndex) =>
-          part.messages.some((message, messageIndex) =>
-            message.attachments.some(
-              (attachment, attachmentIndex) =>
-                attachment.assetId !==
-                state.discordState.parts[partIndex]?.messages[messageIndex]
-                  ?.attachments[attachmentIndex]?.assetId,
-            ),
+        return Boolean(legacyAvatarBase64);
+      });
+      const hasAttachmentChanges = nextParts.some((part, partIndex) =>
+        part.messages.some((message, messageIndex) =>
+          message.attachments.some(
+            (attachment, attachmentIndex) =>
+              attachment.assetId !==
+              state.discordState.parts[partIndex]?.messages[messageIndex]?.attachments[
+                attachmentIndex
+              ]?.assetId,
           ),
-        ) ||
-        state.discordState.parts.some((part) =>
-          part.messages.some((message) =>
-            message.attachments.some((attachment) => Boolean(attachment.base64)),
-          ),
-        );
+        ),
+      ) || state.discordState.parts.some((part) =>
+        part.messages.some((message) =>
+          message.attachments.some((attachment) => Boolean(attachment.base64)),
+        ),
+      );
 
       if (cancelled || (!hasAccountChanges && !hasAttachmentChanges)) {
         return;
@@ -298,9 +277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       const nextAssetUrls = Object.fromEntries(
-        entries.filter(
-          (entry): entry is readonly [string, string] => entry !== null,
-        ),
+        entries.filter((entry): entry is readonly [string, string] => entry !== null),
       );
       const previousAssetUrls = assetUrlsRef.current;
 
@@ -324,20 +301,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(
     () => () => {
-      Object.values(assetUrlsRef.current).forEach((url) =>
-        URL.revokeObjectURL(url),
-      );
+      Object.values(assetUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
     },
     [],
   );
 
-  const setActiveModule = useCallback(
-    (activeModule: ModuleId) =>
+  const value: AppContextValue = {
+    ...state,
+    assetUrls,
+    activeStoryPart,
+    setActiveModule: (activeModule) =>
       setState((current) => ({ ...current, activeModule })),
-    [],
-  );
-  const setActiveStoryPart = useCallback(
-    (partId: string) =>
+    setActiveStoryPart: (partId) =>
       setState((current) => ({
         ...current,
         discordState: {
@@ -345,39 +320,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
           activeStoryPartId: partId,
         },
       })),
-    [],
-  );
-  const setCanvasScale = useCallback(
-    (canvasScale: number) =>
+    setCanvasScale: (canvasScale) =>
       setState((current) => ({ ...current, canvasScale })),
-    [],
-  );
-  const exportState = useCallback(
-    () => serializeAppState(stateRef.current),
-    [],
-  );
-  const importState = useCallback((raw: string) => {
-    const imported = parseImportedAppState(raw);
-    startTransition(() => {
-      setState({
-        ...initialState,
-        ...imported,
-        discordState: normalizeDiscordState(imported.discordState),
+    exportState: () => serializeAppState(state),
+    importState: (raw) => {
+      const imported = parseImportedAppState(raw);
+      startTransition(() => {
+        setState({
+          ...initialState,
+          ...imported,
+          discordState: normalizeDiscordState(imported.discordState),
+        });
       });
-    });
-  }, []);
-  const importStory = useCallback((raw: string) => {
-    const discordState = normalizeDiscordState(parseStoryScript(raw));
-    startTransition(() => {
-      setState((current) => ({
-        ...current,
-        activeModule: "discord",
-        discordState,
-      }));
-    });
-  }, []);
-  const discordActions = useMemo<DiscordActionSet>(
-    () => ({
+    },
+    importStory: (raw) => {
+      const discordState = normalizeDiscordState(parseStoryScript(raw));
+      startTransition(() => {
+        setState((current) => ({
+          ...current,
+          activeModule: "discord",
+          discordState,
+        }));
+      });
+    },
+    discordActions: {
       updateWorkspace: (patch) =>
         setState((current) => ({
           ...current,
@@ -444,84 +410,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
             current.discordState.activeStoryPartId ?? undefined,
           ),
         })),
-    }),
-    [],
-  );
+    },
+  };
 
-  const uiValue = useMemo<AppUiContextValue>(
-    () => ({
-      activeModule: state.activeModule,
-      canvasScale: state.canvasScale,
-      setActiveModule,
-      setCanvasScale,
-    }),
-    [setActiveModule, setCanvasScale, state.activeModule, state.canvasScale],
-  );
-  const discordValue = useMemo<DiscordContextValue>(
-    () => ({
-      discordState: state.discordState,
-      activeStoryPart,
-      setActiveStoryPart,
-    }),
-    [activeStoryPart, setActiveStoryPart, state.discordState],
-  );
-  const actionsValue = useMemo<AppActionsContextValue>(
-    () => ({
-      exportState,
-      importState,
-      importStory,
-      discordActions,
-    }),
-    [discordActions, exportState, importState, importStory],
-  );
-
-  return (
-    <AppUiContext.Provider value={uiValue}>
-      <AppActionsContext.Provider value={actionsValue}>
-        <AssetUrlsContext.Provider value={assetUrls}>
-          <DiscordContext.Provider value={discordValue}>
-            {children}
-          </DiscordContext.Provider>
-        </AssetUrlsContext.Provider>
-      </AppActionsContext.Provider>
-    </AppUiContext.Provider>
-  );
-}
-
-function useRequiredContext<T>(context: T | null, hookName: string) {
-  if (!context) {
-    throw new Error(`${hookName} must be used within AppProvider`);
-  }
-
-  return context;
-}
-
-export function useAppUi() {
-  return useRequiredContext(useContext(AppUiContext), "useAppUi");
-}
-
-export function useDiscordContext() {
-  return useRequiredContext(useContext(DiscordContext), "useDiscordContext");
-}
-
-export function useAssetUrls() {
-  return useRequiredContext(useContext(AssetUrlsContext), "useAssetUrls");
-}
-
-export function useAppActions() {
-  return useRequiredContext(useContext(AppActionsContext), "useAppActions");
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
 export function useAppContext() {
-  const ui = useAppUi();
-  const discord = useDiscordContext();
-  const assetUrls = useAssetUrls();
-  const actions = useAppActions();
+  const context = useContext(AppContext);
 
-  return {
-    ...ui,
-    ...discord,
-    ...actions,
-    assetUrls,
-  };
+  if (!context) {
+    throw new Error("useAppContext must be used within AppProvider");
+  }
+
+  return context;
 }

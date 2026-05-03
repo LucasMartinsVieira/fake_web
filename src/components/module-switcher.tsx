@@ -2,7 +2,7 @@
 
 import type { ComponentType } from "react";
 import { AtSign, Instagram, MessageSquare } from "lucide-react";
-import { useAppUi } from "@/state/app-context";
+import { useAppContext } from "@/state/app-context";
 import { ModuleId, moduleOptions } from "@/state/app-types";
 
 const icons: Record<ModuleId, ComponentType<{ className?: string }>> = {
@@ -12,7 +12,7 @@ const icons: Record<ModuleId, ComponentType<{ className?: string }>> = {
 };
 
 export function ModuleSwitcher() {
-  const { activeModule, setActiveModule } = useAppUi();
+  const { activeModule, setActiveModule } = useAppContext();
 
   return (
     <nav className="flex flex-wrap gap-3">

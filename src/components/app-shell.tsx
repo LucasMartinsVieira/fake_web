@@ -1,12 +1,12 @@
 "use client";
 
-import { useAppUi } from "@/state/app-context";
+import { useAppContext } from "@/state/app-context";
 import { ModuleSwitcher } from "@/components/module-switcher";
 import { GlobalToolbar } from "@/components/global-toolbar";
 import { DiscordWorkspace } from "@/modules/discord/components/discord-workspace";
 
 export function AppShell() {
-  const { activeModule } = useAppUi();
+  const { activeModule } = useAppContext();
 
   return (
     <main className="min-h-screen p-4 md:p-6">

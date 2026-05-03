@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, FileText, Upload, X, ZoomIn } from "lucide-react";
-import { useAppActions, useAppUi } from "@/state/app-context";
+import { useAppContext } from "@/state/app-context";
 
 type SaveFilePickerOptions = {
   suggestedName?: string;
@@ -58,8 +58,8 @@ async function exportJsonWithPicker(rawJson: string) {
 }
 
 export function GlobalToolbar() {
-  const { canvasScale, setCanvasScale } = useAppUi();
-  const { exportState, importState, importStory } = useAppActions();
+  const { canvasScale, exportState, importState, importStory, setCanvasScale } =
+    useAppContext();
   const jsonInputRef = useRef<HTMLInputElement | null>(null);
   const [storyModalOpen, setStoryModalOpen] = useState(false);
   const [storyScript, setStoryScript] = useState(`@story
