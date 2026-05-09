@@ -6,6 +6,7 @@ export function CaptureToolbar({
   captureCounter,
   capturePrefix,
   captureStatus,
+  captureStartMode,
   guideIndex,
   guideMessage,
   isCapturing,
@@ -26,6 +27,7 @@ export function CaptureToolbar({
   captureCounter: number;
   capturePrefix: string;
   captureStatus: string | null;
+  captureStartMode: "auto" | "mark";
   guideIndex: number;
   guideMessage: DiscordMessage | null;
   isCapturing: boolean;
@@ -88,6 +90,15 @@ export function CaptureToolbar({
           Shot {guideIndex + 1}/{messageCount}
         </span>{" "}
         {guideMessage ? `· ${guideMessage.authorName}` : ""}
+        <span
+          className={`ml-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+            captureStartMode === "auto"
+              ? "border-discord-accent/40 bg-discord-accent/15 text-discord-accent"
+              : "border-emerald-400/40 bg-emerald-400/15 text-emerald-300"
+          }`}
+        >
+          {captureStartMode}
+        </span>
         <span className="ml-2 text-chrome-400">
           Range {effectiveCaptureStartIndex + 1}-{guideIndex + 1} ({captureCount})
         </span>

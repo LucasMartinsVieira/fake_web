@@ -456,6 +456,7 @@ export function DiscordPreview() {
             captureCounter={captureCounter}
             capturePrefix={capturePrefix}
             captureStatus={captureStatus}
+            captureStartMode={captureStartIndex === null ? "auto" : "mark"}
             guideIndex={guideIndex}
             guideMessage={guideMessage}
             isCapturing={isCapturing}
