@@ -711,15 +711,18 @@ export function DiscordPreview() {
       await nextFrame();
 
       const captureWrapper = document.createElement("div");
+      const logicalWidth = list.scrollWidth;
       wrapper = captureWrapper;
       captureWrapper.className = "discord-capture-export";
       captureWrapper.style.position = "fixed";
-      captureWrapper.style.left = "10px";
-      captureWrapper.style.top = "10px";
-      captureWrapper.style.width = `${list.getBoundingClientRect().width}px`;
+      captureWrapper.style.left = "0";
+      captureWrapper.style.top = "0";
+      captureWrapper.style.width = `${logicalWidth}px`;
       captureWrapper.style.padding = "0 8px 0 0";
       captureWrapper.style.background = theme.background;
       captureWrapper.style.color = theme.text;
+      captureWrapper.style.pointerEvents = "none";
+      captureWrapper.style.zIndex = "-1";
       captureWrapper.style.fontFamily =
         '"gg sans", ui-sans-serif, system-ui, sans-serif';
 
@@ -729,18 +732,19 @@ export function DiscordPreview() {
 
       document.body.appendChild(captureWrapper);
       await inlineClonedImages(captureWrapper);
+      captureWrapper.style.zoom = String(canvasScale);
       await nextFrame();
 
-      const logicalWidth = list.scrollWidth;
-      captureWrapper.style.width = `${logicalWidth}px`;
-      captureWrapper.style.zoom = String(canvasScale);
+      const renderedBounds = captureWrapper.getBoundingClientRect();
+      const renderedWidth = Math.ceil(renderedBounds.width);
+      const renderedHeight = Math.ceil(renderedBounds.height);
 
       const dataUrl = await toPng(captureWrapper, {
         cacheBust: true,
         pixelRatio: 3,
         backgroundColor: theme.background,
-        width: logicalWidth * canvasScale,
-        height: (captureWrapper.scrollHeight + 12) * canvasScale,
+        width: renderedWidth,
+        height: renderedHeight,
         style: {
           transform: "none",
         },
