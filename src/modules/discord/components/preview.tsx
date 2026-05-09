@@ -42,7 +42,6 @@ export function DiscordPreview() {
   const [chatInputValue, setChatInputValue] = useState("");
   const [guideIndex, setGuideIndex] = useState(0);
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
-  const [guidePinned, setGuidePinned] = useState(false);
   const [captureStartIndex, setCaptureStartIndex] = useState<number | null>(null);
   const [capturePrefix, setCapturePrefix] = useState("hook");
   const [captureCounter, setCaptureCounter] = useState(1);
@@ -304,11 +303,6 @@ export function DiscordPreview() {
         stepGuide("prev");
       }
 
-      if (event.key === "g") {
-        event.preventDefault();
-        setGuidePinned((current) => !current);
-      }
-
       if (event.key === "s") {
         event.preventDefault();
         setResetModalOpen(true);
@@ -471,9 +465,7 @@ export function DiscordPreview() {
             onResetTarget={() => setResetModalOpen(true)}
             onStepNext={() => stepGuide("next")}
             onStepPrev={() => stepGuide("prev")}
-            onTogglePin={() => setGuidePinned((current) => !current)}
             effectiveCaptureStartIndex={effectiveCaptureStartIndex}
-            guidePinned={guidePinned}
           />
         ) : null}
 
@@ -502,8 +494,8 @@ export function DiscordPreview() {
                       mentionColor={theme.mention}
                       messages={discordState.messages}
                       captureStartMessageId={captureStartMessage?.id ?? null}
+                      captureStartMode={captureStartIndex === null ? "auto" : "mark"}
                       guideMessageId={guideMessage?.id ?? null}
-                      guidePinned={guidePinned}
                       flashMessageId={flashMessageId}
                       messageRefs={messageRefs}
                       messageListRef={messageListRef}

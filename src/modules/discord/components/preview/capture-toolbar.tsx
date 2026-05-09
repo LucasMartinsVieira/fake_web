@@ -19,9 +19,7 @@ export function CaptureToolbar({
   onResetTarget,
   onStepNext,
   onStepPrev,
-  onTogglePin,
   effectiveCaptureStartIndex,
-  guidePinned,
 }: {
   captureCount: number;
   captureCounter: number;
@@ -40,9 +38,7 @@ export function CaptureToolbar({
   onResetTarget: () => void;
   onStepNext: () => void;
   onStepPrev: () => void;
-  onTogglePin: () => void;
   effectiveCaptureStartIndex: number;
-  guidePinned: boolean;
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
@@ -70,18 +66,6 @@ export function CaptureToolbar({
           title="Reset shot target (s)"
         >
           Start
-        </button>
-        <button
-          type="button"
-          onClick={onTogglePin}
-          className={`rounded-xl border px-3 py-2 text-xs font-medium transition ${
-            guidePinned
-              ? "border-discord-accent bg-discord-accent/20 text-white"
-              : "border-white/10 bg-black/20 text-chrome-300 hover:border-white/20 hover:text-white"
-          }`}
-          title="Toggle persistent highlight (g)"
-        >
-          Pin
         </button>
       </div>
 

@@ -14,8 +14,8 @@ interface DiscordMessageListProps {
   mentionColor: string;
   messages: DiscordMessage[];
   captureStartMessageId: string | null;
+  captureStartMode: "auto" | "mark";
   guideMessageId: string | null;
-  guidePinned: boolean;
   flashMessageId: string | null;
   messageRefs: RefObject<Record<string, HTMLElement | null>>;
   messageListRef: RefObject<HTMLDivElement | null>;
@@ -27,18 +27,24 @@ function getMessageClassName({
   base,
   isGrouped,
   isCaptureStart,
-  isGuidePinned,
+  captureStartMode,
   isFlashing,
 }: {
   base: string;
   isGrouped?: boolean;
   isCaptureStart: boolean;
-  isGuidePinned: boolean;
+  captureStartMode: "auto" | "mark";
   isFlashing: boolean;
 }) {
   return `${base} ${
     isGrouped ? "py-[1px]" : "mt-4 pb-0.5 pt-1 first:mt-0"
-  } ${isCaptureStart ? "ring-1 ring-emerald-400/70 bg-emerald-400/10" : ""} ${isGuidePinned ? "ring-1 ring-discord-accent/70 bg-discord-accent/10" : ""} ${
+  } ${
+    isCaptureStart
+      ? captureStartMode === "auto"
+        ? "ring-1 ring-discord-accent/70 bg-discord-accent/10"
+        : "ring-1 ring-emerald-400/70 bg-emerald-400/10"
+      : ""
+  } ${
     isFlashing ? "bg-[#f0b232]/20 ring-2 ring-[#f0b232]/70" : ""
   }`;
 }
@@ -90,7 +96,7 @@ function SystemMessageRow({
   index,
   mentionColor,
   isCaptureStart,
-  isGuidePinned,
+  captureStartMode,
   isFlashing,
   canMoveUp,
   canMoveDown,
@@ -102,7 +108,7 @@ function SystemMessageRow({
   index: number;
   mentionColor: string;
   isCaptureStart: boolean;
-  isGuidePinned: boolean;
+  captureStartMode: "auto" | "mark";
   isFlashing: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -118,9 +124,11 @@ function SystemMessageRow({
         messageRefs.current[message.id] = node;
       }}
       className={`group relative mt-4 rounded-xl px-4 py-2 first:mt-0 transition ${
-        isCaptureStart ? "ring-1 ring-emerald-400/70 bg-emerald-400/10" : ""
-      } ${
-        isGuidePinned ? "ring-1 ring-discord-accent/70 bg-discord-accent/10" : ""
+        isCaptureStart
+          ? captureStartMode === "auto"
+            ? "ring-1 ring-discord-accent/70 bg-discord-accent/10"
+            : "ring-1 ring-emerald-400/70 bg-emerald-400/10"
+          : ""
       } ${isFlashing ? "bg-[#f0b232]/20 ring-2 ring-[#f0b232]/70" : ""}`}
     >
       <MessageControls
@@ -150,7 +158,7 @@ function UserMessageRow({
   mentionColor,
   isGrouped,
   isCaptureStart,
-  isGuidePinned,
+  captureStartMode,
   isFlashing,
   canMoveUp,
   canMoveDown,
@@ -165,7 +173,7 @@ function UserMessageRow({
   mentionColor: string;
   isGrouped: boolean;
   isCaptureStart: boolean;
-  isGuidePinned: boolean;
+  captureStartMode: "auto" | "mark";
   isFlashing: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -184,7 +192,7 @@ function UserMessageRow({
         base: "group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5",
         isGrouped,
         isCaptureStart,
-        isGuidePinned,
+        captureStartMode,
         isFlashing,
       })}
     >
@@ -235,8 +243,8 @@ export function DiscordMessageList({
   mentionColor,
   messages,
   captureStartMessageId,
+  captureStartMode,
   guideMessageId,
-  guidePinned,
   flashMessageId,
   messageRefs,
   messageListRef,
@@ -252,7 +260,6 @@ export function DiscordMessageList({
         const canMoveUp = index > 0;
         const canMoveDown = index < messages.length - 1;
         const isCaptureStart = captureStartMessageId === message.id;
-        const isGuidePinned = guidePinned && guideMessageId === message.id;
         const isFlashing = flashMessageId === message.id;
 
         if (message.type === "system") {
@@ -263,7 +270,7 @@ export function DiscordMessageList({
               index={index}
               mentionColor={mentionColor}
               isCaptureStart={isCaptureStart}
-              isGuidePinned={isGuidePinned}
+              captureStartMode={captureStartMode}
               isFlashing={isFlashing}
               canMoveUp={canMoveUp}
               canMoveDown={canMoveDown}
@@ -284,7 +291,7 @@ export function DiscordMessageList({
             mentionColor={mentionColor}
             isGrouped={isGrouped}
             isCaptureStart={isCaptureStart}
-            isGuidePinned={isGuidePinned}
+            captureStartMode={captureStartMode}
             isFlashing={isFlashing}
             canMoveUp={canMoveUp}
             canMoveDown={canMoveDown}
