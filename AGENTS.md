@@ -13,6 +13,7 @@
 - Use `lucide-react` for icons.
 - Use React Context or Redux for state management.
 - Do not use a database.
+- Prefer `bun` over `npm` for package management and script execution.
 - Persist lightweight application state through LocalStorage auto-save and JSON import/export.
 - Store uploaded media binaries outside LocalStorage so large files do not break persistence.
 
@@ -30,6 +31,7 @@
 - Match Discord Web dark mode as closely as practical.
 - Preserve Discord-like spacing, layout, and typography (`gg sans` if available).
 - Support grouped messages so consecutive messages from the same user hide repeated avatar/name and use the tighter vertical spacing seen in Discord Web.
+- Support guided screenshot capture for grouped messages, including auto mode that exports progressive grouped-message shots in sequence.
 - Support an account registry with:
   - username
   - avatar stored locally for in-app editing/preview

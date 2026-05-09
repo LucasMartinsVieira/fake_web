@@ -13,6 +13,7 @@ interface DiscordMessageListProps {
   assetUrls: Record<string, string>;
   mentionColor: string;
   messages: DiscordMessage[];
+  captureStartMessageId: string | null;
   guideMessageId: string | null;
   guidePinned: boolean;
   flashMessageId: string | null;
@@ -25,17 +26,19 @@ interface DiscordMessageListProps {
 function getMessageClassName({
   base,
   isGrouped,
+  isCaptureStart,
   isGuidePinned,
   isFlashing,
 }: {
   base: string;
   isGrouped?: boolean;
+  isCaptureStart: boolean;
   isGuidePinned: boolean;
   isFlashing: boolean;
 }) {
   return `${base} ${
     isGrouped ? "py-[1px]" : "mt-4 pb-0.5 pt-1 first:mt-0"
-  } ${isGuidePinned ? "ring-1 ring-discord-accent/70 bg-discord-accent/10" : ""} ${
+  } ${isCaptureStart ? "ring-1 ring-emerald-400/70 bg-emerald-400/10" : ""} ${isGuidePinned ? "ring-1 ring-discord-accent/70 bg-discord-accent/10" : ""} ${
     isFlashing ? "bg-[#f0b232]/20 ring-2 ring-[#f0b232]/70" : ""
   }`;
 }
@@ -86,6 +89,7 @@ function SystemMessageRow({
   message,
   index,
   mentionColor,
+  isCaptureStart,
   isGuidePinned,
   isFlashing,
   canMoveUp,
@@ -97,6 +101,7 @@ function SystemMessageRow({
   message: DiscordMessage;
   index: number;
   mentionColor: string;
+  isCaptureStart: boolean;
   isGuidePinned: boolean;
   isFlashing: boolean;
   canMoveUp: boolean;
@@ -113,6 +118,8 @@ function SystemMessageRow({
         messageRefs.current[message.id] = node;
       }}
       className={`group relative mt-4 rounded-xl px-4 py-2 first:mt-0 transition ${
+        isCaptureStart ? "ring-1 ring-emerald-400/70 bg-emerald-400/10" : ""
+      } ${
         isGuidePinned ? "ring-1 ring-discord-accent/70 bg-discord-accent/10" : ""
       } ${isFlashing ? "bg-[#f0b232]/20 ring-2 ring-[#f0b232]/70" : ""}`}
     >
@@ -142,6 +149,7 @@ function UserMessageRow({
   avatarUrl,
   mentionColor,
   isGrouped,
+  isCaptureStart,
   isGuidePinned,
   isFlashing,
   canMoveUp,
@@ -156,6 +164,7 @@ function UserMessageRow({
   avatarUrl: string | null;
   mentionColor: string;
   isGrouped: boolean;
+  isCaptureStart: boolean;
   isGuidePinned: boolean;
   isFlashing: boolean;
   canMoveUp: boolean;
@@ -174,6 +183,7 @@ function UserMessageRow({
       className={getMessageClassName({
         base: "group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5",
         isGrouped,
+        isCaptureStart,
         isGuidePinned,
         isFlashing,
       })}
@@ -224,6 +234,7 @@ export function DiscordMessageList({
   assetUrls,
   mentionColor,
   messages,
+  captureStartMessageId,
   guideMessageId,
   guidePinned,
   flashMessageId,
@@ -240,6 +251,7 @@ export function DiscordMessageList({
         const isGrouped = shouldGroupMessages(previousMessage, message);
         const canMoveUp = index > 0;
         const canMoveDown = index < messages.length - 1;
+        const isCaptureStart = captureStartMessageId === message.id;
         const isGuidePinned = guidePinned && guideMessageId === message.id;
         const isFlashing = flashMessageId === message.id;
 
@@ -250,6 +262,7 @@ export function DiscordMessageList({
               message={message}
               index={index}
               mentionColor={mentionColor}
+              isCaptureStart={isCaptureStart}
               isGuidePinned={isGuidePinned}
               isFlashing={isFlashing}
               canMoveUp={canMoveUp}
@@ -270,6 +283,7 @@ export function DiscordMessageList({
             avatarUrl={account?.avatarAssetId ? (assetUrls[account.avatarAssetId] ?? null) : null}
             mentionColor={mentionColor}
             isGrouped={isGrouped}
+            isCaptureStart={isCaptureStart}
             isGuidePinned={isGuidePinned}
             isFlashing={isFlashing}
             canMoveUp={canMoveUp}

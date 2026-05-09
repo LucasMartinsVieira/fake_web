@@ -74,6 +74,7 @@ export function DiscordPreview() {
     captureStartIndex === null
       ? getCaptureRunStartIndex(discordState.messages, guideIndex)
       : Math.min(captureStartIndex, guideIndex);
+  const captureStartMessage = discordState.messages[effectiveCaptureStartIndex] ?? null;
   const captureCount = guideIndex - effectiveCaptureStartIndex + 1;
 
   useEffect(() => {
@@ -155,6 +156,85 @@ export function DiscordPreview() {
     [discordState.messages.length, focusGuideMessage, guideIndex],
   );
 
+  const captureMessageRange = useCallback(
+    async ({
+      startIndex,
+      endIndex,
+      filename,
+    }: {
+      startIndex: number;
+      endIndex: number;
+      filename: string;
+    }) => {
+      const list = messageListRef.current;
+
+      if (!list) {
+        throw new Error("Message list missing");
+      }
+
+      const nodes = Array.from(
+        list.querySelectorAll<HTMLElement>("[data-message-index]"),
+      ).filter((node) => {
+        const index = Number(node.dataset.messageIndex);
+        return index >= startIndex && index <= endIndex;
+      });
+
+      if (!nodes.length) {
+        throw new Error("No messages in capture range");
+      }
+
+      let wrapper: HTMLDivElement | null = null;
+
+      try {
+        await nextFrame();
+
+        const captureWrapper = document.createElement("div");
+        const logicalWidth = list.scrollWidth;
+        wrapper = captureWrapper;
+        captureWrapper.className = "discord-capture-export";
+        captureWrapper.style.position = "fixed";
+        captureWrapper.style.left = "0";
+        captureWrapper.style.top = "0";
+        captureWrapper.style.width = `${logicalWidth}px`;
+        captureWrapper.style.padding = "0 8px 0 0";
+        captureWrapper.style.background = theme.background;
+        captureWrapper.style.color = theme.text;
+        captureWrapper.style.pointerEvents = "none";
+        captureWrapper.style.zIndex = "-1";
+        captureWrapper.style.fontFamily = '"gg sans", ui-sans-serif, system-ui, sans-serif';
+
+        nodes.forEach((node) => {
+          captureWrapper.appendChild(node.cloneNode(true));
+        });
+
+        document.body.appendChild(captureWrapper);
+        await inlineClonedImages(captureWrapper);
+        captureWrapper.style.zoom = String(canvasScale);
+        await nextFrame();
+
+        const renderedBounds = captureWrapper.getBoundingClientRect();
+        const renderedWidth = Math.ceil(renderedBounds.width);
+        const renderedHeight = Math.ceil(renderedBounds.height);
+
+        const dataUrl = await toPng(captureWrapper, {
+          cacheBust: true,
+          pixelRatio: 3,
+          backgroundColor: theme.background,
+          width: renderedWidth,
+          height: renderedHeight,
+          style: {
+            transform: "none",
+          },
+        });
+
+        downloadDataUrl(dataUrl, filename);
+      } finally {
+        wrapper?.remove();
+      }
+    },
+    [canvasScale, theme.background, theme.text],
+  );
+
   const captureGuideRange = useCallback(async () => {
     const list = messageListRef.current;
     const prefix = sanitizeFilePart(capturePrefix) || "hook";
@@ -165,84 +245,47 @@ export function DiscordPreview() {
       return;
     }
 
-    const nodes = Array.from(
-      list.querySelectorAll<HTMLElement>("[data-message-index]"),
-    ).filter((node) => {
-      const index = Number(node.dataset.messageIndex);
-      return index >= startIndex && index <= endIndex;
-    });
-
-    if (!nodes.length) {
-      return;
-    }
-
     setIsCapturing(true);
     setCaptureStatus("Rendering...");
 
-    let wrapper: HTMLDivElement | null = null;
-
     try {
-      await nextFrame();
+      const ranges = Array.from({ length: endIndex - startIndex + 1 }, (_, offset) => ({
+        startIndex,
+        endIndex: startIndex + offset,
+      }));
+      const shouldBurst = captureStartIndex === null && ranges.length > 1;
+      const captureRanges = shouldBurst ? ranges : [{ startIndex, endIndex }];
 
-      const captureWrapper = document.createElement("div");
-      const logicalWidth = list.scrollWidth;
-      wrapper = captureWrapper;
-      captureWrapper.className = "discord-capture-export";
-      captureWrapper.style.position = "fixed";
-      captureWrapper.style.left = "0";
-      captureWrapper.style.top = "0";
-      captureWrapper.style.width = `${logicalWidth}px`;
-      captureWrapper.style.padding = "0 8px 0 0";
-      captureWrapper.style.background = theme.background;
-      captureWrapper.style.color = theme.text;
-      captureWrapper.style.pointerEvents = "none";
-      captureWrapper.style.zIndex = "-1";
-      captureWrapper.style.fontFamily = '"gg sans", ui-sans-serif, system-ui, sans-serif';
+      for (const [offset, range] of captureRanges.entries()) {
+        const fileNumber = captureCounter + offset;
+        await captureMessageRange({
+          startIndex: range.startIndex,
+          endIndex: range.endIndex,
+          filename: `${prefix}_${fileNumber}.png`,
+        });
+      }
 
-      nodes.forEach((node) => {
-        captureWrapper.appendChild(node.cloneNode(true));
-      });
-
-      document.body.appendChild(captureWrapper);
-      await inlineClonedImages(captureWrapper);
-      captureWrapper.style.zoom = String(canvasScale);
-      await nextFrame();
-
-      const renderedBounds = captureWrapper.getBoundingClientRect();
-      const renderedWidth = Math.ceil(renderedBounds.width);
-      const renderedHeight = Math.ceil(renderedBounds.height);
-
-      const dataUrl = await toPng(captureWrapper, {
-        cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: theme.background,
-        width: renderedWidth,
-        height: renderedHeight,
-        style: {
-          transform: "none",
-        },
-      });
-
-      downloadDataUrl(dataUrl, `${prefix}_${captureCounter}.png`);
-      setCaptureCounter((current) => current + 1);
-      setCaptureStatus(`Saved ${prefix}_${captureCounter}.png (${captureCount} msg)`);
+      setCaptureCounter((current) => current + captureRanges.length);
+      setCaptureStatus(
+        shouldBurst
+          ? `Saved ${captureRanges.length} shots from ${prefix}_${captureCounter}.png`
+          : `Saved ${prefix}_${captureCounter}.png (${captureCount} msg)`,
+      );
     } catch (error) {
       setCaptureStatus(error instanceof Error ? error.message : "Screenshot failed");
     } finally {
-      wrapper?.remove();
       setIsCapturing(false);
     }
   }, [
-    canvasScale,
+    captureMessageRange,
     captureCount,
     captureCounter,
     capturePrefix,
+    captureStartIndex,
     discordState.messages.length,
     effectiveCaptureStartIndex,
     guideIndex,
     isCapturing,
-    theme.background,
-    theme.text,
   ]);
 
   useEffect(() => {
@@ -457,6 +500,7 @@ export function DiscordPreview() {
                       assetUrls={assetUrls}
                       mentionColor={theme.mention}
                       messages={discordState.messages}
+                      captureStartMessageId={captureStartMessage?.id ?? null}
                       guideMessageId={guideMessage?.id ?? null}
                       guidePinned={guidePinned}
                       flashMessageId={flashMessageId}
