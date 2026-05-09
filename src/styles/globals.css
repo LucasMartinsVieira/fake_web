@@ -50,3 +50,16 @@ body {
 .discord-typing-dot:nth-child(3) {
   animation-delay: 0.36s;
 }
+
+.discord-capture-export {
+  pointer-events: none;
+}
+
+.discord-capture-export .discord-message-controls {
+  display: none;
+}
+
+.discord-capture-export article {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}

@@ -1,15 +1,27 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { toPng } from "html-to-image";
 import {
   Fragment,
+  useCallback,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { ArrowDown, ArrowUp, Gift, Pencil, X, Plus } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Camera,
+  Flag,
+  Gift,
+  Pencil,
+  RotateCcw,
+  X,
+  Plus,
+} from "lucide-react";
 import { useAppContext } from "@/state/app-context";
 import type {
   DiscordAccount,
@@ -260,6 +272,54 @@ function MessageAttachments({ message }: { message: DiscordMessage }) {
   );
 }
 
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT"
+  );
+}
+
+function getCaptureRunStartIndex(messages: DiscordMessage[], endIndex: number) {
+  let startIndex = endIndex;
+
+  while (
+    startIndex > 0 &&
+    shouldGroupMessages(messages[startIndex - 1], messages[startIndex])
+  ) {
+    startIndex -= 1;
+  }
+
+  return startIndex;
+}
+
+function sanitizeFilePart(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
+}
+
+function downloadDataUrl(dataUrl: string, filename: string) {
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = dataUrl;
+  link.click();
+}
+
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-0.5">
@@ -468,6 +528,20 @@ export function DiscordPreview() {
     toDateTimeLocalValue(new Date().toISOString()),
   );
   const [chatInputValue, setChatInputValue] = useState("");
+  const [guideIndex, setGuideIndex] = useState(0);
+  const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
+  const [guidePinned, setGuidePinned] = useState(false);
+  const [captureStartIndex, setCaptureStartIndex] = useState<number | null>(
+    null,
+  );
+  const [capturePrefix, setCapturePrefix] = useState("hook");
+  const [captureCounter, setCaptureCounter] = useState(1);
+  const [captureStatus, setCaptureStatus] = useState<string | null>(null);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const flashTimeoutRef = useRef<number | null>(null);
+  const messageRefs = useRef<Record<string, HTMLElement | null>>({});
+  const messageListRef = useRef<HTMLDivElement | null>(null);
 
   const editingMessage =
     discordState.messages.find((message) => message.id === editingMessageId) ??
@@ -487,6 +561,12 @@ export function DiscordPreview() {
     discordState.accounts.find(
       (account) => account.id === discordState.typingAccountId,
     ) ?? null;
+  const guideMessage = discordState.messages[guideIndex] ?? null;
+  const effectiveCaptureStartIndex =
+    captureStartIndex === null
+      ? getCaptureRunStartIndex(discordState.messages, guideIndex)
+      : Math.min(captureStartIndex, guideIndex);
+  const captureCount = guideIndex - effectiveCaptureStartIndex + 1;
 
   useEffect(() => {
     if (!editingMessage) {
@@ -499,6 +579,272 @@ export function DiscordPreview() {
     setEditingManualTimestamp(editingMessage.manualTimestamp);
     setEditingTimestamp(toDateTimeLocalValue(editingMessage.timestamp));
   }, [editingMessage]);
+
+  useEffect(() => {
+    setGuideIndex((current) =>
+      Math.min(current, Math.max(discordState.messages.length - 1, 0)),
+    );
+  }, [discordState.messages.length]);
+
+  useEffect(() => {
+    setCaptureStartIndex((current) => {
+      if (current === null) {
+        return null;
+      }
+
+      if (!discordState.messages.length) {
+        return null;
+      }
+
+      return Math.min(current, discordState.messages.length - 1);
+    });
+  }, [discordState.messages.length]);
+
+  useEffect(
+    () => () => {
+      if (flashTimeoutRef.current !== null) {
+        window.clearTimeout(flashTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  const focusGuideMessage = useCallback(
+    (nextIndex: number) => {
+      const nextMessage = discordState.messages[nextIndex];
+
+      if (!nextMessage) {
+        return;
+      }
+
+      setGuideIndex(nextIndex);
+      setFlashMessageId(nextMessage.id);
+
+      if (flashTimeoutRef.current !== null) {
+        window.clearTimeout(flashTimeoutRef.current);
+      }
+
+      flashTimeoutRef.current = window.setTimeout(() => {
+        setFlashMessageId((current) =>
+          current === nextMessage.id ? null : current,
+        );
+      }, 300);
+
+      window.requestAnimationFrame(() => {
+        messageRefs.current[nextMessage.id]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+    },
+    [discordState.messages],
+  );
+
+  const stepGuide = useCallback(
+    (direction: "prev" | "next") => {
+      const delta = direction === "next" ? 1 : -1;
+      const nextIndex = Math.max(
+        0,
+        Math.min(discordState.messages.length - 1, guideIndex + delta),
+      );
+
+      if (nextIndex === guideIndex) {
+        focusGuideMessage(nextIndex);
+        return;
+      }
+
+      focusGuideMessage(nextIndex);
+    },
+    [discordState.messages.length, focusGuideMessage, guideIndex],
+  );
+  const inlineClonedImages = async (root: HTMLElement) => {
+    const images = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+    await Promise.all(
+      images.map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (!img.src || img.src.startsWith("data:")) return resolve();
+            const source = new Image();
+            source.crossOrigin = "anonymous";
+            source.onload = () => {
+              const canvas = document.createElement("canvas");
+              canvas.width = source.naturalWidth;
+              canvas.height = source.naturalHeight;
+              canvas.getContext("2d")?.drawImage(source, 0, 0);
+              img.src = canvas.toDataURL("image/png");
+              resolve();
+            };
+            source.onerror = () => resolve();
+            source.src = img.src;
+          }),
+      ),
+    );
+  };
+
+  const captureGuideRange = useCallback(async () => {
+    const list = messageListRef.current;
+    const prefix = sanitizeFilePart(capturePrefix) || "hook";
+    const startIndex = effectiveCaptureStartIndex;
+    const endIndex = guideIndex;
+
+    if (!list || !discordState.messages.length || isCapturing) {
+      return;
+    }
+
+    const nodes = Array.from(
+      list.querySelectorAll<HTMLElement>("[data-message-index]"),
+    ).filter((node) => {
+      const index = Number(node.dataset.messageIndex);
+      return index >= startIndex && index <= endIndex;
+    });
+
+    if (!nodes.length) {
+      return;
+    }
+
+    setIsCapturing(true);
+    setCaptureStatus("Rendering...");
+
+    let wrapper: HTMLDivElement | null = null;
+
+    try {
+      await nextFrame();
+
+      const captureWrapper = document.createElement("div");
+      wrapper = captureWrapper;
+      captureWrapper.className = "discord-capture-export";
+      captureWrapper.style.position = "fixed";
+      captureWrapper.style.left = "10px";
+      captureWrapper.style.top = "10px";
+      captureWrapper.style.width = `${list.getBoundingClientRect().width}px`;
+      captureWrapper.style.padding = "0 8px 0 0";
+      captureWrapper.style.background = theme.background;
+      captureWrapper.style.color = theme.text;
+      captureWrapper.style.fontFamily =
+        '"gg sans", ui-sans-serif, system-ui, sans-serif';
+
+      nodes.forEach((node) => {
+        captureWrapper.appendChild(node.cloneNode(true));
+      });
+
+      document.body.appendChild(captureWrapper);
+      await inlineClonedImages(captureWrapper);
+      await nextFrame();
+
+      const logicalWidth = list.scrollWidth;
+      captureWrapper.style.width = `${logicalWidth}px`;
+      captureWrapper.style.zoom = String(canvasScale);
+
+      const dataUrl = await toPng(captureWrapper, {
+        cacheBust: true,
+        pixelRatio: 3,
+        backgroundColor: theme.background,
+        width: logicalWidth * canvasScale,
+        height: (captureWrapper.scrollHeight + 12) * canvasScale,
+        style: {
+          transform: "none",
+        },
+      });
+
+      downloadDataUrl(dataUrl, `${prefix}_${captureCounter}.png`);
+      setCaptureCounter((current) => current + 1);
+      setCaptureStatus(
+        `Saved ${prefix}_${captureCounter}.png (${captureCount} msg)`,
+      );
+    } catch (error) {
+      setCaptureStatus(
+        error instanceof Error ? error.message : "Screenshot failed",
+      );
+    } finally {
+      wrapper?.remove();
+      setIsCapturing(false);
+    }
+  }, [
+    captureCount,
+    captureCounter,
+    capturePrefix,
+    discordState.messages.length,
+    effectiveCaptureStartIndex,
+    guideIndex,
+    isCapturing,
+    theme.background,
+    theme.text,
+  ]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (
+        previewView !== "chat" ||
+        editingMessageId ||
+        isTypingTarget(event.target)
+      ) {
+        return;
+      }
+
+      if (event.key === "j") {
+        event.preventDefault();
+        stepGuide("next");
+      }
+
+      if (event.key === "k") {
+        event.preventDefault();
+        stepGuide("prev");
+      }
+
+      if (event.key === "g") {
+        event.preventDefault();
+        setGuidePinned((current) => !current);
+      }
+
+      if (event.key === "s") {
+        event.preventDefault();
+        setResetModalOpen(true);
+      }
+
+      if (event.key === "c") {
+        event.preventDefault();
+        void captureGuideRange();
+      }
+
+      if (event.key === "[") {
+        event.preventDefault();
+        setCaptureStartIndex(guideIndex);
+        setCaptureStatus(`Range starts at shot ${guideIndex + 1}`);
+      }
+
+      if (event.key === "]") {
+        event.preventDefault();
+        setCaptureStartIndex(null);
+        setCaptureStatus("Range auto-groups same author");
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [captureGuideRange, editingMessageId, guideIndex, previewView, stepGuide]);
+
+  useEffect(() => {
+    if (!resetModalOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setResetModalOpen(false);
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        focusGuideMessage(0);
+        setCaptureStartIndex(null);
+        setResetModalOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [focusGuideMessage, resetModalOpen]);
 
   function openMessageEditor(message: DiscordMessage) {
     setEditingMessageId(message.id);
@@ -555,6 +901,121 @@ export function DiscordPreview() {
           </p>
         </div>
 
+        {previewView === "chat" && discordState.messages.length > 0 ? (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => stepGuide("prev")}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                title="Previous shot target (k)"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => stepGuide("next")}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                title="Next shot target (j)"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetModalOpen(true)}
+                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-medium text-chrome-300 transition hover:border-white/20 hover:text-white"
+                title="Reset shot target (s)"
+              >
+                Start
+              </button>
+              <button
+                type="button"
+                onClick={() => setGuidePinned((current) => !current)}
+                className={`rounded-xl border px-3 py-2 text-xs font-medium transition ${
+                  guidePinned
+                    ? "border-discord-accent bg-discord-accent/20 text-white"
+                    : "border-white/10 bg-black/20 text-chrome-300 hover:border-white/20 hover:text-white"
+                }`}
+                title="Toggle persistent highlight (g)"
+              >
+                Pin
+              </button>
+            </div>
+
+            <div className="min-w-0 flex-1 text-sm text-chrome-300">
+              <span className="font-medium text-white">
+                Shot {guideIndex + 1}/{discordState.messages.length}
+              </span>{" "}
+              {guideMessage ? `· ${guideMessage.authorName}` : ""}
+              <span className="ml-2 text-chrome-400">
+                Range {effectiveCaptureStartIndex + 1}-{guideIndex + 1} (
+                {captureCount})
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={capturePrefix}
+                onChange={(event) => setCapturePrefix(event.target.value)}
+                className="h-9 w-24 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white outline-none transition focus:border-discord-accent"
+                aria-label="Screenshot filename prefix"
+              />
+              <input
+                type="number"
+                min="1"
+                value={captureCounter}
+                onChange={(event) =>
+                  setCaptureCounter(Math.max(1, Number(event.target.value)))
+                }
+                className="h-9 w-16 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white outline-none transition focus:border-discord-accent"
+                aria-label="Next screenshot number"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setCaptureStartIndex(guideIndex);
+                  setCaptureStatus(`Range starts at shot ${guideIndex + 1}`);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                title="Set screenshot range start ([)"
+              >
+                <Flag className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCaptureStartIndex(null);
+                  setCaptureStatus("Range auto-groups same author");
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                title="Auto-group same-author range (])"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => void captureGuideRange()}
+                disabled={isCapturing}
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-discord-accent bg-discord-accent px-3 text-xs font-medium text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+                title="Download screenshot (c)"
+              >
+                <Camera className="h-4 w-4" />
+                PNG
+              </button>
+            </div>
+
+            <div className="text-xs uppercase tracking-[0.2em] text-chrome-500">
+              `k/j` nav · `s` start · `[` mark · `]` auto · `c` png
+            </div>
+            {captureStatus ? (
+              <div className="basis-full text-xs text-chrome-400">
+                {captureStatus}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="overflow-auto rounded-[20px] bg-discord-panel p-6">
           <div className="mx-auto transition-[zoom]" style={zoomStyle}>
             <div
@@ -576,7 +1037,7 @@ export function DiscordPreview() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto px-6 pt-6">
-                    <div className="pr-2">
+                    <div ref={messageListRef} className="pr-2">
                       {discordState.messages.map((message, index) => {
                         const authorAccount = discordState.accounts.find(
                           (account) => account.id === message.authorId,
@@ -595,9 +1056,21 @@ export function DiscordPreview() {
                           return (
                             <article
                               key={message.id}
-                              className="group relative mt-4 rounded-xl px-4 py-2 first:mt-0"
+                              data-message-index={index}
+                              ref={(node) => {
+                                messageRefs.current[message.id] = node;
+                              }}
+                              className={`group relative mt-4 rounded-xl px-4 py-2 first:mt-0 transition ${
+                                guidePinned && guideMessage?.id === message.id
+                                  ? "ring-1 ring-discord-accent/70 bg-discord-accent/10"
+                                  : ""
+                              } ${
+                                flashMessageId === message.id
+                                  ? "bg-[#f0b232]/20 ring-2 ring-[#f0b232]/70"
+                                  : ""
+                              }`}
                             >
-                              <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                              <div className="discord-message-controls pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -647,13 +1120,25 @@ export function DiscordPreview() {
                         return (
                           <article
                             key={message.id}
+                            data-message-index={index}
+                            ref={(node) => {
+                              messageRefs.current[message.id] = node;
+                            }}
                             className={`group relative grid grid-cols-[40px_minmax(0,1fr)] gap-x-4 rounded-xl px-4 text-[15px] leading-[1.375rem] transition hover:bg-white/5 ${
                               isGrouped
                                 ? "py-[1px]"
                                 : "mt-4 pb-0.5 pt-1 first:mt-0"
+                            } ${
+                              guidePinned && guideMessage?.id === message.id
+                                ? "ring-1 ring-discord-accent/70 bg-discord-accent/10"
+                                : ""
+                            } ${
+                              flashMessageId === message.id
+                                ? "bg-[#f0b232]/20 ring-2 ring-[#f0b232]/70"
+                                : ""
                             }`}
                           >
-                            <div className="pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                            <div className="discord-message-controls pointer-events-none absolute right-3 top-2 z-10 flex gap-1 opacity-0 transition group-hover:opacity-100">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -925,6 +1410,67 @@ export function DiscordPreview() {
                       Save changes
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {resetModalOpen
+        ? createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reset-shot-title"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            >
+              <div className="w-full max-w-md rounded-[20px] border border-white/10 bg-chrome-950 p-5 shadow-panel">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">
+                      Confirm
+                    </p>
+                    <h3
+                      id="reset-shot-title"
+                      className="mt-1 text-lg font-semibold text-white"
+                    >
+                      Reset shot target?
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResetModalOpen(false)}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-chrome-300 transition hover:border-white/20 hover:text-white"
+                    aria-label="Cancel reset"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-sm leading-6 text-chrome-300">
+                  `s` requested reset to first message. Press Enter to confirm
+                  or Esc to keep current target.
+                </p>
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setResetModalOpen(false)}
+                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300 transition hover:border-white/20 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    autoFocus
+                    onClick={() => {
+                      focusGuideMessage(0);
+                      setCaptureStartIndex(null);
+                      setResetModalOpen(false);
+                    }}
+                    className="rounded-xl border border-discord-accent bg-discord-accent px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
             </div>,
