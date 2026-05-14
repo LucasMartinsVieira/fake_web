@@ -63,7 +63,7 @@ export function CaptureToolbar({
           type="button"
           onClick={onResetTarget}
           className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-medium text-chrome-300 transition hover:border-white/20 hover:text-white"
-          title="Reset shot target (s)"
+          title="Reset shot target (g)"
         >
           Start
         </button>
@@ -84,7 +84,8 @@ export function CaptureToolbar({
           {captureStartMode}
         </span>
         <span className="ml-2 text-chrome-400">
-          Range {effectiveCaptureStartIndex + 1}-{guideIndex + 1} ({captureCount})
+          Range {effectiveCaptureStartIndex + 1}-{guideIndex + 1} (
+          {captureCount})
         </span>
       </div>
 
@@ -100,7 +101,9 @@ export function CaptureToolbar({
           type="number"
           min="1"
           value={captureCounter}
-          onChange={(event) => onChangeCounter(Math.max(1, Number(event.target.value)))}
+          onChange={(event) =>
+            onChangeCounter(Math.max(1, Number(event.target.value)))
+          }
           className="h-9 w-16 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white outline-none transition focus:border-discord-accent"
           aria-label="Next screenshot number"
         />
@@ -133,9 +136,13 @@ export function CaptureToolbar({
       </div>
 
       <div className="text-xs uppercase tracking-[0.2em] text-chrome-500">
-        `k/j` nav · `s` start · `[` mark · `]` auto · `c` png
+        `k/j` nav · `g` start · `[` mark · `]` auto · `c` png
       </div>
-      {captureStatus ? <div className="basis-full text-xs text-chrome-400">{captureStatus}</div> : null}
+      {captureStatus ? (
+        <div className="basis-full text-xs text-chrome-400">
+          {captureStatus}
+        </div>
+      ) : null}
     </div>
   );
 }

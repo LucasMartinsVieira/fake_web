@@ -1,7 +1,13 @@
 "use client";
 
 import { toPng } from "html-to-image";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useAppContext } from "@/state/app-context";
 import type { DiscordMessage } from "@/modules/discord/state/discord-types";
 import { CaptureToolbar } from "@/modules/discord/components/preview/capture-toolbar";
@@ -27,11 +33,14 @@ import {
 } from "@/modules/discord/components/preview/utils";
 
 export function DiscordPreview() {
-  const { assetUrls, canvasScale, discordState, discordActions } = useAppContext();
+  const { assetUrls, canvasScale, discordState, discordActions } =
+    useAppContext();
   const zoomStyle = { zoom: canvasScale } as CSSProperties;
   const theme = discordThemes[discordState.theme];
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [previewView, setPreviewView] = useState<"chat" | "members" | "input">("chat");
+  const [previewView, setPreviewView] = useState<"chat" | "members" | "input">(
+    "chat",
+  );
   const [editingType, setEditingType] = useState<"user" | "system">("user");
   const [editingAuthorId, setEditingAuthorId] = useState("");
   const [editingContent, setEditingContent] = useState("");
@@ -42,7 +51,9 @@ export function DiscordPreview() {
   const [chatInputValue, setChatInputValue] = useState("");
   const [guideIndex, setGuideIndex] = useState(0);
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null);
-  const [captureStartIndex, setCaptureStartIndex] = useState<number | null>(null);
+  const [captureStartIndex, setCaptureStartIndex] = useState<number | null>(
+    null,
+  );
   const [capturePrefix, setCapturePrefix] = useState("hook");
   const [captureCounter, setCaptureCounter] = useState(1);
   const [captureStatus, setCaptureStatus] = useState<string | null>(null);
@@ -53,7 +64,8 @@ export function DiscordPreview() {
   const messageListRef = useRef<HTMLDivElement | null>(null);
 
   const editingMessage =
-    discordState.messages.find((message) => message.id === editingMessageId) ?? null;
+    discordState.messages.find((message) => message.id === editingMessageId) ??
+    null;
   const editingMentionQuery = getMentionQuery(editingContent);
   const editingMentionSuggestions =
     editingMentionQuery === null
@@ -66,14 +78,16 @@ export function DiscordPreview() {
       (account) => account.id === discordState.inputTargetAccountId,
     ) ?? null;
   const typingAccount =
-    discordState.accounts.find((account) => account.id === discordState.typingAccountId) ??
-    null;
+    discordState.accounts.find(
+      (account) => account.id === discordState.typingAccountId,
+    ) ?? null;
   const guideMessage = discordState.messages[guideIndex] ?? null;
   const effectiveCaptureStartIndex =
     captureStartIndex === null
       ? getCaptureRunStartIndex(discordState.messages, guideIndex)
       : Math.min(captureStartIndex, guideIndex);
-  const captureStartMessage = discordState.messages[effectiveCaptureStartIndex] ?? null;
+  const captureStartMessage =
+    discordState.messages[effectiveCaptureStartIndex] ?? null;
   const captureCount = guideIndex - effectiveCaptureStartIndex + 1;
 
   useEffect(() => {
@@ -129,7 +143,9 @@ export function DiscordPreview() {
       }
 
       flashTimeoutRef.current = window.setTimeout(() => {
-        setFlashMessageId((current) => (current === nextMessage.id ? null : current));
+        setFlashMessageId((current) =>
+          current === nextMessage.id ? null : current,
+        );
       }, 300);
 
       window.requestAnimationFrame(() => {
@@ -200,7 +216,8 @@ export function DiscordPreview() {
         captureWrapper.style.color = theme.text;
         captureWrapper.style.pointerEvents = "none";
         captureWrapper.style.zIndex = "-1";
-        captureWrapper.style.fontFamily = '"gg sans", ui-sans-serif, system-ui, sans-serif';
+        captureWrapper.style.fontFamily =
+          '"gg sans", ui-sans-serif, system-ui, sans-serif';
 
         nodes.forEach((node) => {
           captureWrapper.appendChild(node.cloneNode(true));
@@ -248,10 +265,13 @@ export function DiscordPreview() {
     setCaptureStatus("Rendering...");
 
     try {
-      const ranges = Array.from({ length: endIndex - startIndex + 1 }, (_, offset) => ({
-        startIndex,
-        endIndex: startIndex + offset,
-      }));
+      const ranges = Array.from(
+        { length: endIndex - startIndex + 1 },
+        (_, offset) => ({
+          startIndex,
+          endIndex: startIndex + offset,
+        }),
+      );
       const shouldBurst = captureStartIndex === null && ranges.length > 1;
       const captureRanges = shouldBurst ? ranges : [{ startIndex, endIndex }];
 
@@ -271,7 +291,9 @@ export function DiscordPreview() {
           : `Saved ${prefix}_${captureCounter}.png (${captureCount} msg)`,
       );
     } catch (error) {
-      setCaptureStatus(error instanceof Error ? error.message : "Screenshot failed");
+      setCaptureStatus(
+        error instanceof Error ? error.message : "Screenshot failed",
+      );
     } finally {
       setIsCapturing(false);
     }
@@ -289,7 +311,11 @@ export function DiscordPreview() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (previewView !== "chat" || editingMessageId || isTypingTarget(event.target)) {
+      if (
+        previewView !== "chat" ||
+        editingMessageId ||
+        isTypingTarget(event.target)
+      ) {
         return;
       }
 
@@ -303,7 +329,7 @@ export function DiscordPreview() {
         stepGuide("prev");
       }
 
-      if (event.key === "s") {
+      if (event.key === "g") {
         event.preventDefault();
         setResetModalOpen(true);
       }
@@ -383,7 +409,9 @@ export function DiscordPreview() {
       authorId: editingType === "system" ? null : editingAuthorId,
       content: editingContent,
       manualTimestamp: editingManualTimestamp,
-      timestamp: editingManualTimestamp ? fromDateTimeLocalValue(editingTimestamp) : undefined,
+      timestamp: editingManualTimestamp
+        ? fromDateTimeLocalValue(editingTimestamp)
+        : undefined,
     });
     setEditingMessageId(null);
   }
@@ -402,8 +430,12 @@ export function DiscordPreview() {
       <div className="overflow-hidden rounded-[24px] border border-white/10 bg-chrome-950/40 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">Preview</p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Discord Web mockup</h2>
+            <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">
+              Preview
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-white">
+              Discord Web mockup
+            </h2>
           </div>
 
           <div className="flex rounded-xl bg-chrome-900/50 p-1">
@@ -481,7 +513,9 @@ export function DiscordPreview() {
               {previewView === "chat" ? (
                 <div className="flex min-h-[760px] flex-col">
                   <div className="border-b border-white/5 px-6 pb-4 pt-6">
-                    <p className="text-lg font-semibold">#{discordState.channelName}</p>
+                    <p className="text-lg font-semibold">
+                      #{discordState.channelName}
+                    </p>
                     <p className="text-sm text-discord-muted">
                       Mock conversation preview scaffold
                     </p>
@@ -494,7 +528,9 @@ export function DiscordPreview() {
                       mentionColor={theme.mention}
                       messages={discordState.messages}
                       captureStartMessageId={captureStartMessage?.id ?? null}
-                      captureStartMode={captureStartIndex === null ? "auto" : "mark"}
+                      captureStartMode={
+                        captureStartIndex === null ? "auto" : "mark"
+                      }
                       guideMessageId={guideMessage?.id ?? null}
                       flashMessageId={flashMessageId}
                       messageRefs={messageRefs}
@@ -538,7 +574,9 @@ export function DiscordPreview() {
         editingMessage={editingMessage}
         editingTimestamp={editingTimestamp}
         editingType={editingType}
-        onApplyMention={(username) => setEditingContent((current) => applyMention(current, username))}
+        onApplyMention={(username) =>
+          setEditingContent((current) => applyMention(current, username))
+        }
         onChangeAuthorId={setEditingAuthorId}
         onChangeContent={setEditingContent}
         onChangeManualTimestamp={setEditingManualTimestamp}
