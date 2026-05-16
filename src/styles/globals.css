@@ -15,10 +15,12 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top, rgba(88, 101, 242, 0.18), transparent 35%),
-    linear-gradient(180deg, #0b1020 0%, #0f1727 100%);
+    radial-gradient(circle at top, rgba(88, 101, 242, 0.22), transparent 26%),
+    radial-gradient(circle at 85% 10%, rgba(56, 189, 248, 0.14), transparent 20%),
+    linear-gradient(180deg, #08101d 0%, #0f1727 52%, #0c1320 100%);
   color: #dbdee1;
   font-family: "gg sans", ui-sans-serif, system-ui, sans-serif;
+  background-attachment: fixed;
 }
 
 .twitter-chirp-font {
@@ -35,6 +37,31 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+* {
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.14);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: padding-box;
 }
 
 @keyframes discord-typing-dot {

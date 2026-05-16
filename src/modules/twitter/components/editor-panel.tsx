@@ -25,8 +25,21 @@ function toDateTimeLocalValue(timestamp: string) {
 }
 
 function SectionLabel({ children }: { children: string }) {
-  return <span className="mb-1 block text-sm text-chrome-300">{children}</span>;
+  return (
+    <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.24em] text-chrome-500">
+      {children}
+    </span>
+  );
 }
+
+const fieldClassName =
+  "w-full min-w-0 rounded-2xl border border-white/10 bg-black/20 px-3.5 py-3 text-white outline-none transition placeholder:text-chrome-500 focus:border-sky-500 focus:bg-black/30";
+
+const iconButtonClassName =
+  "inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-chrome-300 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white";
+
+const toggleCardClassName =
+  "flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3.5 py-3 text-white transition hover:border-white/20 hover:bg-black/30";
 
 export function TwitterEditorPanel() {
   const { assetUrls, twitterActions, twitterState } = useAppContext();
@@ -69,50 +82,85 @@ export function TwitterEditorPanel() {
   }) {
     const avatarUrl = tweet.avatarAssetId ? (assetUrls[tweet.avatarAssetId] ?? null) : null;
     const mediaUrl = tweet.mediaAssetId ? (assetUrls[tweet.mediaAssetId] ?? null) : null;
+    const contentLength = tweet.content.trim().length;
 
     return (
-      <div className="rounded-2xl border border-white/10 bg-chrome-900/60 p-4">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h3 className="font-medium text-white">{title}</h3>
-            <p className="text-sm text-chrome-300">Editable post content for the preview.</p>
+      <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
+        <div className="mb-4 rounded-[22px] border border-white/10 bg-[linear-gradient(135deg,rgba(29,155,240,0.12),rgba(255,255,255,0.03))] p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-sky-300/80">
+                Post editor
+              </p>
+              <h3 className="mt-1 text-lg font-medium text-white">{title}</h3>
+              <p className="mt-1 text-sm leading-6 text-chrome-300">
+                Editable post content for preview.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-right text-[11px] uppercase tracking-[0.2em] text-chrome-500">
+                Actions
+              </p>
+              <div className="flex gap-2">
+                {onMoveUp ? (
+                  <button
+                    type="button"
+                    onClick={onMoveUp}
+                    className={iconButtonClassName}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {onMoveDown ? (
+                  <button
+                    type="button"
+                    onClick={onMoveDown}
+                    className={iconButtonClassName}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {onRemove ? (
+                  <button
+                    type="button"
+                    onClick={onRemove}
+                    className={`${iconButtonClassName} hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-200`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
-            {onMoveUp ? (
-              <button
-                type="button"
-                onClick={onMoveUp}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-chrome-300 transition hover:border-white/20 hover:text-white"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </button>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-chrome-200">
+              {contentLength} chars
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-chrome-200">
+              {mediaUrl ? "media on" : "media off"}
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-chrome-200">
+              @{tweet.username || "username"}
+            </span>
+            {tweet.showMetrics ? (
+              <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-sky-100">
+                metrics visible
+              </span>
             ) : null}
-            {onMoveDown ? (
-              <button
-                type="button"
-                onClick={onMoveDown}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-chrome-300 transition hover:border-white/20 hover:text-white"
-              >
-                <ArrowDown className="h-4 w-4" />
-              </button>
-            ) : null}
-            {onRemove ? (
-              <button
-                type="button"
-                onClick={onRemove}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-chrome-300 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-200"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+            {tweet.showTimestamp ? (
+              <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-sky-100">
+                time visible
+              </span>
             ) : null}
           </div>
         </div>
 
-        <div className="grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-[96px_minmax(0,1fr)]">
-            <div className="space-y-2">
+        <div className="grid gap-4">
+          <div className="grid gap-4 rounded-[22px] border border-white/10 bg-black/15 p-4 md:grid-cols-[110px_minmax(0,1fr)]">
+            <div className="space-y-2 md:space-y-3">
               <SectionLabel>Profile picture</SectionLabel>
-              <div className="relative h-24 w-24 overflow-hidden rounded-full border border-white/10 bg-black/20">
+              <div className="relative h-24 w-full max-w-[132px] overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(29,155,240,0.24),rgba(255,255,255,0.04))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:w-24 md:max-w-none">
                 {avatarUrl ? (
                   <>
                     <img src={avatarUrl} alt={tweet.name} className="h-full w-full object-cover" />
@@ -125,7 +173,7 @@ export function TwitterEditorPanel() {
                     </button>
                   </>
                 ) : (
-                  <label className="flex h-full cursor-pointer items-center justify-center text-chrome-300 transition hover:bg-white/5">
+                  <label className="flex h-full cursor-pointer flex-col items-center justify-center gap-2 text-chrome-300 transition hover:bg-white/5 hover:text-white">
                     <input
                       type="file"
                       accept="image/*"
@@ -138,19 +186,20 @@ export function TwitterEditorPanel() {
                       }}
                     />
                     <AtSign className="h-5 w-5" />
+                    <span className="text-[11px] uppercase tracking-[0.2em]">Upload</span>
                   </label>
                 )}
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
               <label className="block">
                 <SectionLabel>Name</SectionLabel>
                 <input
                   type="text"
                   value={tweet.name}
                   onChange={(event) => onPatch({ name: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+                  className={fieldClassName}
                 />
               </label>
               <label className="block">
@@ -159,7 +208,7 @@ export function TwitterEditorPanel() {
                   type="text"
                   value={tweet.username}
                   onChange={(event) => onPatch({ username: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+                  className={fieldClassName}
                 />
               </label>
               <label className="block sm:col-span-2">
@@ -168,34 +217,38 @@ export function TwitterEditorPanel() {
                   rows={4}
                   value={tweet.content}
                   onChange={(event) => onPatch({ content: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+                  className={`${fieldClassName} min-h-[120px] resize-y leading-6`}
                 />
               </label>
             </div>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="rounded-[22px] border border-white/10 bg-black/15 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <SectionLabel>Attached image</SectionLabel>
-                {mediaUrl ? (
+                <div>
+                  <SectionLabel>Attached image</SectionLabel>
+                  <p className="text-sm text-chrome-300">Optional media for tweet body.</p>
+                </div>
+              </div>
+              {mediaUrl ? (
+                <div className="group relative">
+                  <img
+                    src={mediaUrl}
+                    alt={tweet.mediaAlt || `${tweet.name} media`}
+                    className="h-40 w-full rounded-2xl border border-white/10 object-cover"
+                  />
                   <button
                     type="button"
                     onClick={() => onPatch({ mediaAssetId: null, mediaAlt: "" })}
-                    className="text-xs text-red-200 transition hover:text-red-100"
+                    className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/60 text-white opacity-0 transition hover:bg-red-600/75 hover:opacity-100 group-hover:opacity-100"
+                    aria-label="Remove attached image"
                   >
-                    Remove
+                    <Trash2 className="h-5 w-5" />
                   </button>
-                ) : null}
-              </div>
-              {mediaUrl ? (
-                <img
-                  src={mediaUrl}
-                  alt={tweet.mediaAlt || `${tweet.name} media`}
-                  className="h-40 w-full rounded-2xl border border-white/10 object-cover"
-                />
+                </div>
               ) : (
-                <label className="flex h-40 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/5 text-chrome-300 transition hover:border-sky-500 hover:text-white">
+                <label className="flex min-h-[176px] cursor-pointer flex-col items-center justify-center rounded-[22px] border border-dashed border-white/15 bg-white/[0.03] px-4 text-center text-chrome-300 transition hover:border-sky-500 hover:bg-sky-500/5 hover:text-white">
                   <input
                     type="file"
                     accept="image/*"
@@ -207,9 +260,12 @@ export function TwitterEditorPanel() {
                       event.target.value = "";
                     }}
                   />
-                  <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2 text-sm font-medium">
                     <ImagePlus className="h-4 w-4" />
                     Add image
+                  </span>
+                  <span className="mt-2 text-xs uppercase tracking-[0.18em] text-chrome-500">
+                    Drag feeling, click action
                   </span>
                 </label>
               )}
@@ -220,13 +276,13 @@ export function TwitterEditorPanel() {
                   value={tweet.mediaAlt}
                   onChange={(event) => onPatch({ mediaAlt: event.target.value })}
                   placeholder="Describe the image"
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+                  className={fieldClassName}
                 />
               </label>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block sm:col-span-2">
+            <div className="space-y-4 rounded-[22px] border border-white/10 bg-black/15 p-4">
+              <div>
                 <SectionLabel>Time and date</SectionLabel>
                 <input
                   type="datetime-local"
@@ -234,61 +290,70 @@ export function TwitterEditorPanel() {
                   onChange={(event) =>
                     onPatch({ timestamp: new Date(event.target.value).toISOString() })
                   }
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+                  className={fieldClassName}
                 />
-              </label>
-              <label className="block">
-                <SectionLabel>Views</SectionLabel>
-                <input
-                  type="text"
-                  value={tweet.views}
-                  onChange={(event) => onPatch({ views: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
-                />
-              </label>
-              <label className="block">
-                <SectionLabel>Comments</SectionLabel>
-                <input
-                  type="text"
-                  value={tweet.comments}
-                  onChange={(event) => onPatch({ comments: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
-                />
-              </label>
-              <label className="block">
-                <SectionLabel>Retweets</SectionLabel>
-                <input
-                  type="text"
-                  value={tweet.retweets}
-                  onChange={(event) => onPatch({ retweets: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
-                />
-              </label>
-              <label className="block">
-                <SectionLabel>Likes</SectionLabel>
-                <input
-                  type="text"
-                  value={tweet.likes}
-                  onChange={(event) => onPatch({ likes: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
-                />
-              </label>
-              <label className="block sm:col-span-2">
-                <SectionLabel>Bookmarks</SectionLabel>
-                <input
-                  type="text"
-                  value={tweet.bookmarks}
-                  onChange={(event) => onPatch({ bookmarks: event.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
-                />
-              </label>
+              </div>
+
+              <div>
+                <div className="mb-3">
+                  <SectionLabel>Engagement</SectionLabel>
+                  <p className="text-sm text-chrome-300">Numbers shown below post body.</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block">
+                    <SectionLabel>Views</SectionLabel>
+                    <input
+                      type="text"
+                      value={tweet.views}
+                      onChange={(event) => onPatch({ views: event.target.value })}
+                      className={fieldClassName}
+                    />
+                  </label>
+                  <label className="block">
+                    <SectionLabel>Comments</SectionLabel>
+                    <input
+                      type="text"
+                      value={tweet.comments}
+                      onChange={(event) => onPatch({ comments: event.target.value })}
+                      className={fieldClassName}
+                    />
+                  </label>
+                  <label className="block">
+                    <SectionLabel>Retweets</SectionLabel>
+                    <input
+                      type="text"
+                      value={tweet.retweets}
+                      onChange={(event) => onPatch({ retweets: event.target.value })}
+                      className={fieldClassName}
+                    />
+                  </label>
+                  <label className="block">
+                    <SectionLabel>Likes</SectionLabel>
+                    <input
+                      type="text"
+                      value={tweet.likes}
+                      onChange={(event) => onPatch({ likes: event.target.value })}
+                      className={fieldClassName}
+                    />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <SectionLabel>Bookmarks</SectionLabel>
+                    <input
+                      type="text"
+                      value={tweet.bookmarks}
+                      onChange={(event) => onPatch({ bookmarks: event.target.value })}
+                      className={fieldClassName}
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="block">
             <SectionLabel>Bottom row</SectionLabel>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-chrome-900 px-3 py-3 text-white">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={toggleCardClassName}>
                 <input
                   type="checkbox"
                   checked={tweet.showTimestamp}
@@ -297,9 +362,12 @@ export function TwitterEditorPanel() {
                   }
                   className="h-4 w-4 accent-sky-500"
                 />
-                <span className="text-sm">Show time and date</span>
+                <span>
+                  <span className="block text-sm font-medium">Show time and date</span>
+                  <span className="block text-xs text-chrome-400">Render tweet timestamp line.</span>
+                </span>
               </label>
-              <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-chrome-900 px-3 py-3 text-white">
+              <label className={toggleCardClassName}>
                 <input
                   type="checkbox"
                   checked={tweet.showMetrics}
@@ -308,7 +376,10 @@ export function TwitterEditorPanel() {
                   }
                   className="h-4 w-4 accent-sky-500"
                 />
-                <span className="text-sm">Show metrics</span>
+                <span>
+                  <span className="block text-sm font-medium">Show metrics</span>
+                  <span className="block text-xs text-chrome-400">Render views and reaction counts.</span>
+                </span>
               </label>
             </div>
           </div>
@@ -318,25 +389,36 @@ export function TwitterEditorPanel() {
   }
 
   return (
-    <aside className="rounded-[24px] border border-white/10 bg-chrome-950/60 p-4">
-      <div className="mb-5">
-        <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">X / Twitter Editor</p>
-        <h2 className="mt-2 text-xl font-semibold text-white">Tweet composer</h2>
+    <aside className="rounded-[28px] border border-white/10 bg-chrome-950/70 p-4 shadow-panel lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+      <div className="mb-5 overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(135deg,rgba(29,155,240,0.18),rgba(255,255,255,0.04))] p-4">
+        <p className="text-xs uppercase tracking-[0.3em] text-sky-200/70">X / Twitter Editor</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">Tweet composer</h2>
+        <p className="mt-2 text-sm leading-6 text-chrome-200">
+          Tune tweet metadata, media, reply order. Canvas stays as-is.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-chrome-300">
+          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-chrome-100">
+            {twitterState.view === "replyChain" ? "Reply chain view" : "Single view"}
+          </span>
+          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-chrome-100">
+            {twitterState.replyChain.length + 1} total posts
+          </span>
+        </div>
       </div>
 
       <div className="space-y-4">
-        <section className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+        <section className="rounded-[24px] border border-white/10 bg-white/5 p-4">
           <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-2xl bg-sky-500/15 p-2 text-sky-400">
+            <div className="rounded-2xl bg-sky-500/15 p-2.5 text-sky-400">
               <Settings2 className="h-4 w-4" />
             </div>
             <div>
               <h3 className="font-medium text-white">Module settings</h3>
-              <p className="text-sm text-chrome-300">Choose the X/Twitter screen and background theme.</p>
+              <p className="text-sm text-chrome-300">Choose screen type and canvas theme.</p>
             </div>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
               <SectionLabel>Functionality</SectionLabel>
               <select
@@ -344,7 +426,7 @@ export function TwitterEditorPanel() {
                 onChange={(event) =>
                   twitterActions.updateWorkspace({ view: event.target.value as TwitterView })
                 }
-                className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+                className={fieldClassName}
               >
                 <option value="tweet">Regular Tweet</option>
                 <option value="replyChain">Reply Chain</option>
@@ -360,7 +442,7 @@ export function TwitterEditorPanel() {
                 onChange={(event) =>
                   twitterActions.updateWorkspace({ theme: event.target.value as TwitterTheme })
                 }
-                className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+                className={fieldClassName}
               >
                 <option value="light">Light · #ffffff</option>
                 <option value="dim">Dim · #15202b</option>
@@ -376,7 +458,7 @@ export function TwitterEditorPanel() {
           onPatch: (patch) => twitterActions.updatePrimaryTweet(patch),
         })}
 
-        <section className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+        <section className="rounded-[24px] border border-white/10 bg-white/5 p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="font-medium text-white">Reply chain</h3>
@@ -393,7 +475,7 @@ export function TwitterEditorPanel() {
                   content: "New reply",
                 })
               }
-              className="inline-flex items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/15 px-3 py-2 text-sm text-sky-100 transition hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/15 px-4 py-2.5 text-sm font-medium text-sky-100 transition hover:brightness-110"
             >
               <Plus className="h-4 w-4" />
               Add reply
@@ -406,7 +488,7 @@ export function TwitterEditorPanel() {
               type="datetime-local"
               value={newReplyTimestamp}
               onChange={(event) => setNewReplyTimestamp(event.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-chrome-900 px-3 py-2 text-white outline-none transition focus:border-sky-500"
+              className={fieldClassName}
             />
           </label>
 

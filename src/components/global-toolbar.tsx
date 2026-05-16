@@ -79,10 +79,24 @@ SYSTEM: Ava joined the server.
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300">
-          <ZoomIn className="h-4 w-4" />
-          <span>{Math.round(canvasScale * 100)}%</span>
+      <div className="grid gap-3 rounded-[26px] border border-white/10 bg-chrome-950/60 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-chrome-500">
+                Preview zoom
+              </p>
+              <p className="mt-1 text-sm text-chrome-300">
+                Scale full mockup proportionally.
+              </p>
+            </div>
+            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-medium text-white">
+              {Math.round(canvasScale * 100)}%
+            </div>
+          </div>
+
+          <label className="mt-4 flex items-center gap-3 rounded-full border border-white/10 bg-black/20 px-4 py-3 text-sm text-chrome-300">
+            <ZoomIn className="h-4 w-4 shrink-0" />
           <input
             type="range"
             min="0.5"
@@ -90,9 +104,10 @@ SYSTEM: Ava joined the server.
             step="0.1"
             value={canvasScale}
             onChange={(event) => setCanvasScale(Number(event.target.value))}
-            className="accent-discord-accent"
+            className="h-2 w-full cursor-pointer accent-discord-accent"
           />
         </label>
+        </div>
 
         <input
           ref={jsonInputRef}
@@ -120,55 +135,57 @@ SYSTEM: Ava joined the server.
           }}
         />
 
-        <button
-          type="button"
-          onClick={() => jsonInputRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10"
-        >
-          <Upload className="h-4 w-4" />
-          Import JSON
-        </button>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => jsonInputRef.current?.click()}
+            className="inline-flex items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+          >
+            <Upload className="h-4 w-4" />
+            Import JSON
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setStoryModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10"
-        >
-          <FileText className="h-4 w-4" />
-          Import Story
-        </button>
+          <button
+            type="button"
+            onClick={() => setStoryModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+          >
+            <FileText className="h-4 w-4" />
+            Import Story
+          </button>
 
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              await exportJsonWithPicker(exportState());
-            } catch (error) {
-              if (
-                error instanceof DOMException &&
-                error.name === "AbortError"
-              ) {
-                return;
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await exportJsonWithPicker(exportState());
+              } catch (error) {
+                if (
+                  error instanceof DOMException &&
+                  error.name === "AbortError"
+                ) {
+                  return;
+                }
+
+                window.alert(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to export JSON.",
+                );
               }
-
-              window.alert(
-                error instanceof Error
-                  ? error.message
-                  : "Failed to export JSON.",
-              );
-            }
-          }}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-chrome-300 transition hover:border-white/20 hover:bg-white/10"
-        >
-          <Download className="h-4 w-4" />
-          Export JSON
-        </button>
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-[18px] border border-discord-accent/30 bg-discord-accent/15 px-4 py-3 text-sm text-white transition hover:brightness-110"
+          >
+            <Download className="h-4 w-4" />
+            Export JSON
+          </button>
+        </div>
       </div>
 
       {storyModalOpen
         ? createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-[24px] border border-white/10 bg-chrome-950 p-5 shadow-panel">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-white/10 bg-chrome-950 p-5 shadow-panel">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">
@@ -192,7 +209,7 @@ SYSTEM: Ava joined the server.
               </button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
               <label className="block">
                 <span className="mb-2 block text-sm text-chrome-300">
                   Story script
@@ -201,11 +218,11 @@ SYSTEM: Ava joined the server.
                   value={storyScript}
                   onChange={(event) => setStoryScript(event.target.value)}
                   rows={18}
-                  className="w-full rounded-2xl border border-white/10 bg-chrome-900 px-4 py-3 font-mono text-sm text-white outline-none transition focus:border-discord-accent"
+                  className="w-full rounded-[22px] border border-white/10 bg-chrome-900 px-4 py-3 font-mono text-sm text-white outline-none transition focus:border-discord-accent"
                 />
               </label>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-chrome-300">
+              <div className="rounded-[22px] border border-white/10 bg-white/5 p-4 text-sm text-chrome-300">
                 <p className="font-medium text-white">Supported format</p>
                 <div className="mt-3 space-y-2">
                   <p>`@workspace` section:</p>

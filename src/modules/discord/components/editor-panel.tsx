@@ -80,16 +80,27 @@ export function DiscordEditorPanel() {
   }, [newAccountAvatarPreviewUrl]);
 
   return (
-    <aside className="rounded-[24px] border border-white/10 bg-chrome-950/60 p-4">
-      <div className="mb-5">
+    <aside className="rounded-[28px] border border-white/10 bg-chrome-950/70 p-4 shadow-panel lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+      <div className="mb-5 rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
         <p className="text-xs uppercase tracking-[0.3em] text-chrome-500">
           Discord Editor
         </p>
         <h2 className="mt-2 text-xl font-semibold text-white">Control panel</h2>
+        <p className="mt-2 text-sm leading-6 text-chrome-300">
+          Shape workspace, accounts, messages. Preview stays untouched on right.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs text-chrome-300">
+          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
+            {discordState.accounts.length} accounts
+          </span>
+          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
+            {discordState.messages.length} messages
+          </span>
+        </div>
       </div>
 
       <div className="space-y-4">
-        <section className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+        <section className="rounded-[22px] border border-white/10 bg-white/5 p-4">
           <button
             type="button"
             onClick={() => setWorkspaceCollapsed((current) => !current)}
@@ -209,7 +220,7 @@ export function DiscordEditorPanel() {
           ) : null}
         </section>
 
-        <section className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+        <section className="rounded-[22px] border border-white/10 bg-white/5 p-4">
           <button
             type="button"
             onClick={() => setAccountsCollapsed((current) => !current)}
@@ -511,7 +522,7 @@ export function DiscordEditorPanel() {
           ) : null}
         </section>
 
-        <section className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+        <section className="rounded-[22px] border border-white/10 bg-white/5 p-4">
           <button
             type="button"
             onClick={() => setMessagesCollapsed((current) => !current)}
