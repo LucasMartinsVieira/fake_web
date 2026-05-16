@@ -21,6 +21,18 @@ body {
   font-family: "gg sans", ui-sans-serif, system-ui, sans-serif;
 }
 
+.twitter-chirp-font {
+  font-family:
+    "TwitterChirp",
+    "Chirp",
+    "Segoe UI",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
 * {
   box-sizing: border-box;
 }

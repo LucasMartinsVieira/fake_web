@@ -4,6 +4,7 @@ import { useAppContext } from "@/state/app-context";
 import { ModuleSwitcher } from "@/components/module-switcher";
 import { GlobalToolbar } from "@/components/global-toolbar";
 import { DiscordWorkspace } from "@/modules/discord/components/discord-workspace";
+import { TwitterWorkspace } from "@/modules/twitter/components/twitter-workspace";
 
 export function AppShell() {
   const { activeModule } = useAppContext();
@@ -28,6 +29,8 @@ export function AppShell() {
         <section className="grid flex-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           {activeModule === "discord" ? (
             <DiscordWorkspace />
+          ) : activeModule === "twitter" ? (
+            <TwitterWorkspace />
           ) : (
             <div className="col-span-full rounded-[24px] border border-dashed border-white/10 bg-chrome-950/40 p-10 text-center text-chrome-300">
               This module is intentionally a placeholder in Phase 1.

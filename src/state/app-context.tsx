@@ -27,6 +27,20 @@ import type {
   DiscordMessagePatch,
   DiscordWorkspacePatch,
 } from "@/modules/discord/state/discord-types";
+import { initialTwitterState } from "@/modules/twitter/state/twitter-initial-state";
+import {
+  createReplyTweet,
+  moveReplyTweet,
+  normalizeTwitterState,
+  patchTwitterWorkspace,
+  removeReplyTweet,
+  updatePrimaryTweet,
+  updateReplyTweet,
+} from "@/modules/twitter/state/twitter-state";
+import type {
+  TwitterPostDraft,
+  TwitterWorkspacePatch,
+} from "@/modules/twitter/state/twitter-types";
 import {
   initialStateSnapshot,
   type AppState,
@@ -58,7 +72,17 @@ interface DiscordActionSet {
   moveMessage: (messageId: string, direction: "up" | "down") => void;
 }
 
+interface TwitterActionSet {
+  updateWorkspace: (patch: TwitterWorkspacePatch) => void;
+  updatePrimaryTweet: (patch: TwitterPostDraft) => void;
+  createReplyTweet: (draft?: TwitterPostDraft) => void;
+  updateReplyTweet: (tweetId: string, patch: TwitterPostDraft) => void;
+  removeReplyTweet: (tweetId: string) => void;
+  moveReplyTweet: (tweetId: string, direction: "up" | "down") => void;
+}
+
 interface AppContextValue extends AppState {
+  canvasScale: number;
   assetUrls: Record<string, string>;
   setActiveModule: (moduleId: ModuleId) => void;
   setCanvasScale: (value: number) => void;
@@ -66,24 +90,47 @@ interface AppContextValue extends AppState {
   importState: (raw: string) => void;
   importStory: (raw: string) => void;
   discordActions: DiscordActionSet;
+  twitterActions: TwitterActionSet;
 }
 
 const initialState: AppState = initialStateSnapshot;
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+function normalizeModuleZooms(
+  moduleZooms?: Partial<Record<ModuleId, number>> | null,
+  legacyCanvasScale?: number,
+) {
+  const fallback =
+    typeof legacyCanvasScale === "number"
+      ? legacyCanvasScale
+      : initialStateSnapshot.moduleZooms.discord;
+
+  return {
+    discord: moduleZooms?.discord ?? fallback,
+    twitter: moduleZooms?.twitter ?? fallback,
+    instagram: moduleZooms?.instagram ?? fallback,
+  } satisfies Record<ModuleId, number>;
+}
+
 function collectReferencedAssetIds(state: AppState) {
   return Array.from(
     new Set([
-    ...state.discordState.accounts
-      .map((account) => account.avatarAssetId)
-      .filter((assetId): assetId is string => Boolean(assetId)),
-    ...state.discordState.messages.flatMap((message) =>
-      message.attachments
-        .map((attachment) => attachment.assetId)
+      ...state.discordState.accounts
+        .map((account) => account.avatarAssetId)
         .filter((assetId): assetId is string => Boolean(assetId)),
-    ),
-    ]),
+      ...state.discordState.messages.flatMap((message) =>
+        message.attachments
+          .map((attachment) => attachment.assetId)
+          .filter((assetId): assetId is string => Boolean(assetId)),
+      ),
+      state.twitterState.primaryTweet.avatarAssetId,
+      state.twitterState.primaryTweet.mediaAssetId,
+      ...state.twitterState.replyChain.flatMap((tweet) => [
+        tweet.avatarAssetId,
+        tweet.mediaAssetId,
+      ]),
+    ].filter((assetId): assetId is string => Boolean(assetId))),
   );
 }
 
@@ -102,8 +149,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       ...initialState,
       ...stored,
+      moduleZooms: normalizeModuleZooms(
+        stored.moduleZooms,
+        (stored as Partial<AppState> & { canvasScale?: number }).canvasScale,
+      ),
       discordState: normalizeDiscordState(
         stored.discordState ?? initialDiscordState,
+      ),
+      twitterState: normalizeTwitterState(
+        stored.twitterState ?? initialTwitterState,
       ),
     };
   });
@@ -249,18 +303,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value: AppContextValue = {
     ...state,
+    canvasScale: state.moduleZooms[state.activeModule],
     assetUrls,
     setActiveModule: (activeModule) =>
       setState((current) => ({ ...current, activeModule })),
     setCanvasScale: (canvasScale) =>
-      setState((current) => ({ ...current, canvasScale })),
+      setState((current) => ({
+        ...current,
+        moduleZooms: {
+          ...current.moduleZooms,
+          [current.activeModule]: canvasScale,
+        },
+      })),
     exportState: () => serializeAppState(state),
     importState: (raw) => {
       const imported = parseImportedAppState(raw);
       setState({
         ...initialState,
         ...imported,
+        moduleZooms: normalizeModuleZooms(
+          imported.moduleZooms,
+          (imported as Partial<AppState> & { canvasScale?: number }).canvasScale,
+        ),
         discordState: normalizeDiscordState(imported.discordState),
+        twitterState: normalizeTwitterState(imported.twitterState),
       });
     },
     importStory: (raw) => {
@@ -323,6 +389,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
             messageId,
             direction,
           ),
+        })),
+    },
+    twitterActions: {
+      updateWorkspace: (patch) =>
+        setState((current) => ({
+          ...current,
+          twitterState: patchTwitterWorkspace(current.twitterState, patch),
+        })),
+      updatePrimaryTweet: (patch) =>
+        setState((current) => ({
+          ...current,
+          twitterState: updatePrimaryTweet(current.twitterState, patch),
+        })),
+      createReplyTweet: (draft) =>
+        setState((current) => ({
+          ...current,
+          twitterState: createReplyTweet(current.twitterState, draft),
+        })),
+      updateReplyTweet: (tweetId, patch) =>
+        setState((current) => ({
+          ...current,
+          twitterState: updateReplyTweet(current.twitterState, tweetId, patch),
+        })),
+      removeReplyTweet: (tweetId) =>
+        setState((current) => ({
+          ...current,
+          twitterState: removeReplyTweet(current.twitterState, tweetId),
+        })),
+      moveReplyTweet: (tweetId, direction) =>
+        setState((current) => ({
+          ...current,
+          twitterState: moveReplyTweet(current.twitterState, tweetId, direction),
         })),
     },
   };

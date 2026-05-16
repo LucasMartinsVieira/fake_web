@@ -32,6 +32,16 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["gg sans", "ui-sans-serif", "system-ui", "sans-serif"],
+        twitter: [
+          "TwitterChirp",
+          "Chirp",
+          "Segoe UI",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "sans-serif",
+        ],
       },
     },
   },

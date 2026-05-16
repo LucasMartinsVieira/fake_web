@@ -13,7 +13,7 @@
 - Use `lucide-react` for icons.
 - Use React Context or Redux for state management.
 - Do not use a database.
-- Prefer `bun` over `npm` for package management and script execution.
+- Prefer `pnpm` over `npm` for package management and script execution.
 - Persist lightweight application state through LocalStorage auto-save and JSON import/export.
 - Store uploaded media binaries outside LocalStorage so large files do not break persistence.
 
