@@ -192,7 +192,7 @@ export function TwitterEditorPanel() {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3">
               <label className="block">
                 <SectionLabel>Name</SectionLabel>
                 <input
@@ -211,19 +211,20 @@ export function TwitterEditorPanel() {
                   className={fieldClassName}
                 />
               </label>
-              <label className="block sm:col-span-2">
-                <SectionLabel>Tweet content</SectionLabel>
-                <textarea
-                  rows={4}
-                  value={tweet.content}
-                  onChange={(event) => onPatch({ content: event.target.value })}
-                  className={`${fieldClassName} min-h-[120px] resize-y leading-6`}
-                />
-              </label>
             </div>
+
+            <label className="block md:col-span-2">
+              <SectionLabel>Tweet content</SectionLabel>
+              <textarea
+                rows={4}
+                value={tweet.content}
+                onChange={(event) => onPatch({ content: event.target.value })}
+                className={`${fieldClassName} min-h-[120px] resize-y leading-6`}
+              />
+            </label>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid gap-4">
             <div className="rounded-[22px] border border-white/10 bg-black/15 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div>
@@ -285,13 +286,15 @@ export function TwitterEditorPanel() {
               <div>
                 <SectionLabel>Time and date</SectionLabel>
                 <input
-                  type="datetime-local"
-                  value={toDateTimeLocalValue(tweet.timestamp)}
-                  onChange={(event) =>
-                    onPatch({ timestamp: new Date(event.target.value).toISOString() })
-                  }
+                  type="text"
+                  value={tweet.timestamp}
+                  onChange={(event) => onPatch({ timestamp: event.target.value })}
+                  placeholder="9:41 AM · May 16, 2026"
                   className={fieldClassName}
                 />
+                <p className="mt-2 text-xs text-chrome-400">
+                  Free-form label shown in editor state. Write timestamp text as needed.
+                </p>
               </div>
 
               <div>

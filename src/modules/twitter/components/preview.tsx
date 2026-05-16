@@ -73,7 +73,16 @@ function downloadDataUrl(dataUrl: string, filename: string) {
 }
 
 function formatMetaTimestamp(timestamp: string) {
+  if (!timestamp.trim()) {
+    return "";
+  }
+
   const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+
   const time = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -88,14 +97,33 @@ function formatMetaTimestamp(timestamp: string) {
 }
 
 function formatReplyTimestamp(timestamp: string) {
+  if (!timestamp.trim()) {
+    return "";
+  }
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-  }).format(new Date(timestamp));
+  }).format(date);
 }
 
 function formatFullTimestamp(timestamp: string) {
+  if (!timestamp.trim()) {
+    return "";
+  }
+
   const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+
   const time = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
